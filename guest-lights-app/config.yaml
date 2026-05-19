@@ -1,0 +1,29 @@
+name: "Guest Lights"
+description: "A simple, unauthenticated web app for guests to control lights by room."
+version: "1.0.0"
+slug: "guest_lights"
+init: false
+url: "https://github.com/local/guest-lights"
+
+arch:
+  - aarch64
+  - amd64
+  - armhf
+  - armv7
+  - i386
+
+ports:
+  7080/tcp: 7080
+ports_description:
+  7080/tcp: "Guest Lights Web UI"
+
+options:
+  ha_url: "http://homeassistant.local:8123"
+  ha_token: ""
+
+schema:
+  ha_url: str
+  ha_token: str
+
+panel_icon: mdi:lightbulb-group
+panel_title: "Guest Lights"

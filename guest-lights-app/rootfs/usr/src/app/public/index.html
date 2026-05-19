@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Lights</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f11;
+      --surface: #1a1a1f;
+      --surface2: #242429;
+      --surface3: #2e2e35;
+      --border: #2e2e3a;
+      --text: #f0f0f5;
+      --text-secondary: #8888a0;
+      --accent: #f5c842;
+      --accent-dim: rgba(245, 200, 66, 0.15);
+      --on-color: #f5c842;
+      --off-color: #44445a;
+      --radius: 16px;
+      --radius-sm: 10px;
+      --transition: 0.18s ease;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      min-height: 100dvh;
+      padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+
+    header {
+      padding: 24px 20px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .header-title {
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .header-title span {
+      color: var(--accent);
+    }
+
+    #all-off-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all var(--transition);
+      white-space: nowrap;
+    }
+    #all-off-btn:hover { background: var(--surface3); color: var(--text); }
+
+    #loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 60dvh;
+      gap: 16px;
+      color: var(--text-secondary);
+    }
+
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid var(--surface3);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #rooms {
+      padding: 8px 16px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* Room Card */
+    .room-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      transition: border-color var(--transition);
+    }
+    .room-card.has-on { border-color: rgba(245, 200, 66, 0.3); }
+
+    .room-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      cursor: pointer;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .room-toggle {
+      flex-shrink: 0;
+      width: 44px; height: 26px;
+      background: var(--off-color);
+      border-radius: 13px;
+      position: relative;
+      transition: background var(--transition);
+      border: none;
+      cursor: pointer;
+    }
+    .room-toggle.on { background: var(--on-color); }
+    .room-toggle::after {
+      content: '';
+      position: absolute;
+      width: 20px; height: 20px;
+      background: white;
+      border-radius: 50%;
+      top: 3px; left: 3px;
+      transition: transform var(--transition);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    }
+    .room-toggle.on::after { transform: translateX(18px); }
+
+    .room-info { flex: 1; min-width: 0; }
+    .room-name {
+      font-size: 16px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .room-status {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    .room-expand-icon {
+      color: var(--text-secondary);
+      font-size: 18px;
+      transition: transform var(--transition);
+      flex-shrink: 0;
+    }
+    .room-card.expanded .room-expand-icon { transform: rotate(180deg); }
+
+    /* Room-level controls */
+    .room-controls {
+      padding: 0 16px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      border-top: 1px solid var(--border);
+      padding-top: 14px;
+    }
+
+    .control-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .control-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      width: 56px;
+      flex-shrink: 0;
+    }
+
+    /* Sliders */
+    input[type=range] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: var(--surface3);
+      outline: none;
+      cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+      cursor: pointer;
+    }
+    input[type=range]::-moz-range-thumb {
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+      cursor: pointer;
+      border: none;
+    }
+
+    .brightness-track {
+      flex: 1;
+      position: relative;
+    }
+    .brightness-track input[type=range] {
+      background: linear-gradient(to right, #333 0%, #fff 100%);
+    }
+
+    .ct-track {
+      flex: 1;
+    }
+    .ct-track input[type=range] {
+      background: linear-gradient(to right, #ffd27f, #ffffff, #c9e8ff);
+    }
+
+    /* Color Wheel */
+    .color-wheel-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 1;
+    }
+    .color-wheel-canvas {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      cursor: crosshair;
+      flex-shrink: 0;
+      touch-action: none;
+    }
+    .color-preview {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      flex-shrink: 0;
+      background: white;
+    }
+
+    /* Bulb list */
+    .bulb-list {
+      display: none;
+      flex-direction: column;
+      gap: 0;
+    }
+    .room-card.expanded .bulb-list { display: flex; }
+
+    .bulb-item {
+      border-top: 1px solid var(--border);
+      padding: 12px 16px;
+    }
+
+    .bulb-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .bulb-toggle {
+      flex-shrink: 0;
+      width: 36px; height: 22px;
+      background: var(--off-color);
+      border-radius: 11px;
+      position: relative;
+      transition: background var(--transition);
+      border: none;
+      cursor: pointer;
+    }
+    .bulb-toggle.on { background: var(--on-color); }
+    .bulb-toggle::after {
+      content: '';
+      position: absolute;
+      width: 16px; height: 16px;
+      background: white;
+      border-radius: 50%;
+      top: 3px; left: 3px;
+      transition: transform var(--transition);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    }
+    .bulb-toggle.on::after { transform: translateX(14px); }
+
+    .bulb-name {
+      font-size: 14px;
+      font-weight: 500;
+      flex: 1;
+    }
+
+    .bulb-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding-left: 0;
+    }
+
+    .bulb-control-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .bulb-control-label {
+      font-size: 11px;
+      color: var(--text-secondary);
+      width: 48px;
+      flex-shrink: 0;
+    }
+
+    /* Color wheel small (per-bulb) */
+    .color-wheel-canvas.small {
+      width: 80px;
+      height: 80px;
+    }
+
+    /* Unarranged lights section */
+    .section-label {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-secondary);
+      padding: 8px 4px 4px;
+    }
+
+    /* Disabled state */
+    .room-card.all-off .room-controls,
+    .room-card.all-off .bulb-list { opacity: 0.5; pointer-events: none; }
+    .room-card.all-off.expanded .bulb-list { pointer-events: auto; opacity: 1; }
+
+    @media (min-width: 600px) {
+      #rooms { max-width: 640px; margin: 0 auto; padding-left: 20px; padding-right: 20px; }
+      header { max-width: 640px; margin: 0 auto; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-title">Guest <span>Lights</span></div>
+  <button id="all-off-btn">All Off</button>
+</header>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <div>Connecting to lights…</div>
+</div>
+
+<div id="rooms" style="display:none"></div>
+
+<script>
+// ─── State ────────────────────────────────────────────────────────────────────
+const state = {
+  entities: {},  // entity_id -> state object from HA
+  ws: null,
+};
+
+// ─── API helpers ─────────────────────────────────────────────────────────────
+async function haGet(path) {
+  const r = await fetch(path);
+  if (!r.ok) throw new Error(`GET ${path} -> ${r.status}`);
+  return r.json();
+}
+
+async function haPost(path, body) {
+  const r = await fetch(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return r.json();
+}
+
+// ─── Light control ────────────────────────────────────────────────────────────
+function callLight(service, entityIds, extra = {}) {
+  const target = Array.isArray(entityIds)
+    ? { entity_id: entityIds }
+    : { entity_id: entityIds };
+  haPost(`/api/services/light/${service}`, { ...extra, entity_id: Array.isArray(entityIds) ? entityIds : [entityIds] });
+}
+
+function setOn(entityId) { callLight('turn_on', entityId); }
+function setOff(entityId) { callLight('turn_off', entityId); }
+function setBrightness(entityId, pct) {
+  callLight('turn_on', entityId, { brightness_pct: Math.round(pct) });
+}
+function setColorTemp(entityId, mireds) {
+  callLight('turn_on', entityId, { color_temp: Math.round(mireds) });
+}
+function setHsColor(entityId, h, s) {
+  callLight('turn_on', entityId, { hs_color: [Math.round(h), Math.round(s * 100)] });
+}
+
+// ─── Color wheel ─────────────────────────────────────────────────────────────
+function drawWheel(canvas) {
+  const ctx = canvas.getContext('2d');
+  const r = canvas.width / 2;
+  const imageData = ctx.createImageData(canvas.width, canvas.height);
+
+  for (let y = 0; y < canvas.height; y++) {
+    for (let x = 0; x < canvas.width; x++) {
+      const dx = x - r, dy = y - r;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if (dist > r) continue;
+      const hue = ((Math.atan2(dy, dx) * 180 / Math.PI) + 360) % 360;
+      const sat = dist / r;
+      const [rr, gg, bb] = hslToRgb(hue / 360, sat, 0.5);
+      const i = (y * canvas.width + x) * 4;
+      imageData.data[i]   = rr;
+      imageData.data[i+1] = gg;
+      imageData.data[i+2] = bb;
+      imageData.data[i+3] = 255;
+    }
+  }
+  ctx.putImageData(imageData, 0, 0);
+}
+
+function hslToRgb(h, s, l) {
+  let r, g, b;
+  if (s === 0) { r = g = b = l; }
+  else {
+    const hue2rgb = (p, q, t) => {
+      if (t < 0) t += 1; if (t > 1) t -= 1;
+      if (t < 1/6) return p + (q-p)*6*t;
+      if (t < 1/2) return q;
+      if (t < 2/3) return p + (q-p)*(2/3-t)*6;
+      return p;
+    };
+    const q = l < 0.5 ? l*(1+s) : l+s-l*s, p = 2*l-q;
+    r = hue2rgb(p,q,h+1/3); g = hue2rgb(p,q,h); b = hue2rgb(p,q,h-1/3);
+  }
+  return [Math.round(r*255), Math.round(g*255), Math.round(b*255)];
+}
+
+function rgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r,g,b), min = Math.min(r,g,b);
+  let h, s, l = (max+min)/2;
+  if (max === min) { h = s = 0; }
+  else {
+    const d = max - min;
+    s = l > 0.5 ? d/(2-max-min) : d/(max+min);
+    switch(max) {
+      case r: h = ((g-b)/d + (g<b?6:0))/6; break;
+      case g: h = ((b-r)/d + 2)/6; break;
+      case b: h = ((r-g)/d + 4)/6; break;
+    }
+  }
+  return [h*360, s, l];
+}
+
+function setupColorWheel(canvas, preview, onPick) {
+  // Lazy-draw on first use
+  if (!canvas._drawn) {
+    const size = canvas.width;
+    canvas.style.width = canvas.getAttribute('data-display-size') + 'px';
+    canvas.style.height = canvas.getAttribute('data-display-size') + 'px';
+    drawWheel(canvas);
+    canvas._drawn = true;
+  }
+
+  const getHS = (evt) => {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+    const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    const r = rect.width / 2;
+    const dx = x - r, dy = y - r;
+    const dist = Math.min(Math.sqrt(dx*dx + dy*dy), r);
+    const hue = ((Math.atan2(dy, dx) * 180 / Math.PI) + 360) % 360;
+    const sat = dist / r;
+    return [hue, sat];
+  };
+
+  let dragging = false;
+  const pick = (evt) => {
+    evt.preventDefault();
+    const [h, s] = getHS(evt);
+    const [rr, gg, bb] = hslToRgb(h/360, s, 0.5);
+    preview.style.background = `rgb(${rr},${gg},${bb})`;
+    onPick(h, s);
+  };
+
+  canvas.addEventListener('mousedown', (e) => { dragging = true; pick(e); });
+  canvas.addEventListener('mousemove', (e) => { if (dragging) pick(e); });
+  document.addEventListener('mouseup', () => dragging = false);
+  canvas.addEventListener('touchstart', pick, { passive: false });
+  canvas.addEventListener('touchmove', pick, { passive: false });
+}
+
+// ─── Capability detection ─────────────────────────────────────────────────────
+function getCapabilities(entity) {
+  const attr = entity?.attributes || {};
+  const modes = attr.supported_color_modes || [];
+  const hasColor = modes.some(m => ['hs', 'rgb', 'rgbw', 'rgbww', 'xy'].includes(m));
+  const hasCT = modes.includes('color_temp');
+  const hasBrightness = attr.supported_features > 0 || modes.length > 0;
+  return { hasColor, hasCT, hasBrightness };
+}
+
+// ─── UI: Room card builder ────────────────────────────────────────────────────
+function buildRoomCard(areaId, areaName, entityIds) {
+  const card = document.createElement('div');
+  card.className = 'room-card';
+  card.dataset.areaId = areaId;
+
+  // ── Header ──
+  const header = document.createElement('div');
+  header.className = 'room-header';
+
+  const toggle = document.createElement('button');
+  toggle.className = 'room-toggle';
+  toggle.title = 'Toggle all lights in room';
+
+  const info = document.createElement('div');
+  info.className = 'room-info';
+  const nameEl = document.createElement('div');
+  nameEl.className = 'room-name';
+  nameEl.textContent = areaName;
+  const statusEl = document.createElement('div');
+  statusEl.className = 'room-status';
+  info.append(nameEl, statusEl);
+
+  const expandIcon = document.createElement('div');
+  expandIcon.className = 'room-expand-icon';
+  expandIcon.innerHTML = '&#8964;';
+
+  header.append(toggle, info, expandIcon);
+
+  // ── Room-level controls ──
+  const controls = document.createElement('div');
+  controls.className = 'room-controls';
+
+  // Check if any bulb in room has color / CT
+  const anyColor = entityIds.some(id => getCapabilities(state.entities[id]).hasColor);
+  const anyCT = entityIds.some(id => getCapabilities(state.entities[id]).hasCT);
+
+  // Brightness
+  const brightnessRow = buildSliderRow('Brightness', 'brightness', 0, 100, (val) => {
+    entityIds.forEach(id => {
+      if (state.entities[id]?.state === 'on') setBrightness(id, val);
+    });
+  });
+  controls.appendChild(brightnessRow.row);
+
+  // Color controls
+  let colorWheelEl = null, colorPreviewEl = null;
+  if (anyColor) {
+    const colorRow = document.createElement('div');
+    colorRow.className = 'control-row';
+    const lbl = document.createElement('div');
+    lbl.className = 'control-label';
+    lbl.textContent = 'Color';
+    const wheelWrap = document.createElement('div');
+    wheelWrap.className = 'color-wheel-wrap';
+
+    const canvas = document.createElement('canvas');
+    canvas.className = 'color-wheel-canvas';
+    canvas.width = 200; canvas.height = 200;
+    canvas.setAttribute('data-display-size', '120');
+
+    const preview = document.createElement('div');
+    preview.className = 'color-preview';
+
+    wheelWrap.append(canvas, preview);
+    colorRow.append(lbl, wheelWrap);
+    controls.appendChild(colorRow);
+    colorWheelEl = canvas;
+    colorPreviewEl = preview;
+
+    setupColorWheel(canvas, preview, (h, s) => {
+      entityIds.forEach(id => {
+        if (state.entities[id]?.state === 'on' && getCapabilities(state.entities[id]).hasColor) {
+          setHsColor(id, h, s);
+        }
+      });
+    });
+  }
+
+  // Color temp
+  if (anyCT) {
+    const ctRow = buildCTRow(entityIds.filter(id => getCapabilities(state.entities[id]).hasCT));
+    controls.appendChild(ctRow);
+  }
+
+  // ── Bulb list ──
+  const bulbList = document.createElement('div');
+  bulbList.className = 'bulb-list';
+
+  entityIds.forEach(id => {
+    const bulbEl = buildBulbItem(id);
+    bulbList.appendChild(bulbEl);
+  });
+
+  card.append(header, controls, bulbList);
+
+  // ── Toggle logic ──
+  toggle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const anyOn = entityIds.some(id => state.entities[id]?.state === 'on');
+    entityIds.forEach(id => anyOn ? setOff(id) : setOn(id));
+    // Optimistic UI
+    entityIds.forEach(id => {
+      if (state.entities[id]) state.entities[id].state = anyOn ? 'off' : 'on';
+    });
+    updateRoomCardState(card, entityIds);
+  });
+
+  header.addEventListener('click', () => {
+    card.classList.toggle('expanded');
+  });
+
+  updateRoomCardState(card, entityIds);
+  card._entityIds = entityIds;
+  card._brightnessSlider = brightnessRow.slider;
+
+  return card;
+}
+
+function buildSliderRow(label, type, min, max, onChange) {
+  const row = document.createElement('div');
+  row.className = 'control-row';
+  const lbl = document.createElement('div');
+  lbl.className = 'control-label';
+  lbl.textContent = label;
+  const track = document.createElement('div');
+  track.className = `${type}-track`;
+  const slider = document.createElement('input');
+  slider.type = 'range';
+  slider.min = min; slider.max = max; slider.value = 100;
+
+  let debounceT;
+  slider.addEventListener('input', () => {
+    clearTimeout(debounceT);
+    debounceT = setTimeout(() => onChange(parseFloat(slider.value)), 80);
+  });
+
+  track.appendChild(slider);
+  row.append(lbl, track);
+  return { row, slider };
+}
+
+function buildCTRow(entityIds) {
+  const allAttrs = entityIds.map(id => state.entities[id]?.attributes || {});
+  const minMireds = Math.min(...allAttrs.map(a => a.min_mireds || 153));
+  const maxMireds = Math.max(...allAttrs.map(a => a.max_mireds || 500));
+
+  const row = document.createElement('div');
+  row.className = 'control-row';
+  const lbl = document.createElement('div');
+  lbl.className = 'control-label';
+  lbl.textContent = 'Warmth';
+  const track = document.createElement('div');
+  track.className = 'ct-track';
+  const slider = document.createElement('input');
+  slider.type = 'range';
+  slider.min = minMireds; slider.max = maxMireds;
+  slider.value = Math.round((minMireds + maxMireds) / 2);
+
+  let debounceT;
+  slider.addEventListener('input', () => {
+    clearTimeout(debounceT);
+    debounceT = setTimeout(() => {
+      entityIds.forEach(id => {
+        if (state.entities[id]?.state === 'on') setColorTemp(id, parseFloat(slider.value));
+      });
+    }, 80);
+  });
+
+  track.appendChild(slider);
+  row.append(lbl, track);
+  return row;
+}
+
+function buildBulbItem(entityId) {
+  const entity = state.entities[entityId] || {};
+  const attr = entity.attributes || {};
+  const cap = getCapabilities(entity);
+
+  const item = document.createElement('div');
+  item.className = 'bulb-item';
+  item.dataset.entityId = entityId;
+
+  const header = document.createElement('div');
+  header.className = 'bulb-header';
+
+  const toggle = document.createElement('button');
+  toggle.className = 'bulb-toggle' + (entity.state === 'on' ? ' on' : '');
+
+  const name = document.createElement('div');
+  name.className = 'bulb-name';
+  name.textContent = ENTITY_LABELS[entityId] || attr.friendly_name || entityId.replace('light.', '').replace(/_/g, ' ');
+
+  header.append(toggle, name);
+  item.appendChild(header);
+
+  const bulbControls = document.createElement('div');
+  bulbControls.className = 'bulb-controls';
+
+  // Brightness
+  if (cap.hasBrightness) {
+    const { row, slider } = buildSliderRow('Bright', 'brightness', 0, 100, (val) => {
+      setBrightness(entityId, val);
+    });
+    slider.value = attr.brightness ? Math.round(attr.brightness / 255 * 100) : 100;
+    item._brightnessSlider = slider;
+    bulbControls.appendChild(row);
+  }
+
+  // Color
+  if (cap.hasColor) {
+    const colorRow = document.createElement('div');
+    colorRow.className = 'bulb-control-row';
+    const lbl = document.createElement('div');
+    lbl.className = 'bulb-control-label';
+    lbl.textContent = 'Color';
+    const wheelWrap = document.createElement('div');
+    wheelWrap.className = 'color-wheel-wrap';
+
+    const canvas = document.createElement('canvas');
+    canvas.className = 'color-wheel-canvas small';
+    canvas.width = 160; canvas.height = 160;
+    canvas.setAttribute('data-display-size', '80');
+
+    const preview = document.createElement('div');
+    preview.className = 'color-preview';
+    if (attr.rgb_color) {
+      preview.style.background = `rgb(${attr.rgb_color.join(',')})`;
+    }
+
+    wheelWrap.append(canvas, preview);
+    colorRow.append(lbl, wheelWrap);
+    bulbControls.appendChild(colorRow);
+
+    setupColorWheel(canvas, preview, (h, s) => setHsColor(entityId, h, s));
+  }
+
+  // Color temp
+  if (cap.hasCT) {
+    const minM = attr.min_mireds || 153;
+    const maxM = attr.max_mireds || 500;
+    const { row, slider } = buildSliderRow('Warmth', 'ct', minM, maxM, (val) => {
+      setColorTemp(entityId, val);
+    });
+    slider.value = attr.color_temp || Math.round((minM + maxM) / 2);
+    item._ctSlider = slider;
+    bulbControls.appendChild(row);
+  }
+
+  item.appendChild(bulbControls);
+
+  toggle.addEventListener('click', () => {
+    const isOn = entity.state === 'on';
+    isOn ? setOff(entityId) : setOn(entityId);
+    state.entities[entityId] = { ...state.entities[entityId], state: isOn ? 'off' : 'on' };
+    updateBulbItemState(item, entityId);
+  });
+
+  return item;
+}
+
+// ─── UI: Update functions ─────────────────────────────────────────────────────
+function updateRoomCardState(card, entityIds) {
+  const entities = entityIds.map(id => state.entities[id]).filter(Boolean);
+  const onCount = entities.filter(e => e.state === 'on').length;
+  const total = entities.length;
+  const anyOn = onCount > 0;
+
+  const toggle = card.querySelector('.room-toggle');
+  const status = card.querySelector('.room-status');
+
+  if (toggle) toggle.classList.toggle('on', anyOn);
+  if (status) {
+    status.textContent = anyOn
+      ? onCount === total ? 'All on' : `${onCount} of ${total} on`
+      : 'All off';
+  }
+  card.classList.toggle('has-on', anyOn);
+
+  // Update brightness slider to average
+  if (card._brightnessSlider && anyOn) {
+    const brightnesses = entities
+      .filter(e => e.state === 'on' && e.attributes?.brightness)
+      .map(e => Math.round(e.attributes.brightness / 255 * 100));
+    if (brightnesses.length) {
+      card._brightnessSlider.value = Math.round(brightnesses.reduce((a,b) => a+b, 0) / brightnesses.length);
+    }
+  }
+}
+
+function updateBulbItemState(item, entityId) {
+  const entity = state.entities[entityId];
+  if (!entity) return;
+  const toggle = item.querySelector('.bulb-toggle');
+  if (toggle) toggle.classList.toggle('on', entity.state === 'on');
+  if (entity.attributes?.brightness && item._brightnessSlider) {
+    item._brightnessSlider.value = Math.round(entity.attributes.brightness / 255 * 100);
+  }
+  if (entity.attributes?.color_temp && item._ctSlider) {
+    item._ctSlider.value = entity.attributes.color_temp;
+  }
+}
+
+function updateEntityUI(entityId) {
+  // Update any bulb items
+  document.querySelectorAll(`.bulb-item[data-entity-id="${entityId}"]`).forEach(item => {
+    updateBulbItemState(item, entityId);
+  });
+  // Update room cards containing this entity
+  document.querySelectorAll('.room-card').forEach(card => {
+    if (card._entityIds?.includes(entityId)) {
+      updateRoomCardState(card, card._entityIds);
+    }
+  });
+}
+
+// ─── Hardcoded room/entity map (from lights.txt) ─────────────────────────────
+// Floor → [ { name, entities: [ {id, label} ] } ]
+const FLOORS = [
+  {
+    floor: 'Ground Floor',
+    rooms: [
+      {
+        name: 'Entryway',
+        entities: [
+          { id: 'light.forgang', label: 'Entryway' },
+        ],
+      },
+      {
+        name: 'Dining Room',
+        entities: [
+          { id: 'light.spisebord_1',  label: 'Dining Table 1'  },
+          { id: 'light.spisebord_2',  label: 'Dining Table 2'  },
+          { id: 'light.spisebord_3',  label: 'Dining Table 3'  },
+          { id: 'light.spisebord_4',  label: 'Dining Table 4'  },
+          { id: 'light.spisebord_5',  label: 'Dining Table 5'  },
+          { id: 'light.spisebord_6',  label: 'Dining Table 6'  },
+          { id: 'light.spisebord_7',  label: 'Dining Table 7'  },
+          { id: 'light.spisebord_8',  label: 'Dining Table 8'  },
+          { id: 'light.spisebord_9',  label: 'Dining Table 9'  },
+          { id: 'light.spisebord_10', label: 'Dining Table 10' },
+          { id: 'light.spisebord_11', label: 'Dining Table 11' },
+          { id: 'light.spisebord_12', label: 'Dining Table 12' },
+          { id: 'light.spisebord_13', label: 'Dining Table 13' },
+          { id: 'light.spisebord_14', label: 'Dining Table 14' },
+        ],
+      },
+      {
+        name: 'TV Lounge',
+        entities: [
+          { id: 'light.tv_stue_sofabord',  label: 'Coffee Table' },
+          { id: 'light.tv_stue_hyggelys',  label: 'Mood Light'   },
+          { id: 'light.tv_stue_le_klint',  label: 'Le Klint'     },
+        ],
+      },
+      {
+        name: 'Guest Bedroom',
+        entities: [
+          { id: 'light.gaestevaerelse_syd',  label: 'South'        },
+          { id: 'light.standerlampe',        label: 'Floor Lamp'   },
+          { id: 'light.gaestevaerelse_nord', label: 'North'        },
+        ],
+      },
+    ],
+  },
+  {
+    floor: 'Upstairs',
+    rooms: [
+      {
+        name: 'Stairwell',
+        entities: [
+          { id: 'light.trappeopgang_trappe', label: 'Stairs' },
+          { id: 'light.trappeopgang_repos',  label: 'Landing' },
+        ],
+      },
+      {
+        name: 'Kids Bedroom',
+        entities: [
+          { id: 'light.c_e_camille', label: 'Bed Lamp West' },
+          { id: 'light.c_e_ebbe',    label: 'Bed Lamp East' },
+        ],
+      },
+      {
+        name: 'Stairwell Bathroom',
+        entities: [
+          { id: 'light.badevaerelse_ost_1_sal', label: 'Bathroom' },
+        ],
+      },
+      {
+        name: 'Crafts Table',
+        entities: [
+          { id: 'light.kreabord_hvid', label: 'White' },
+          { id: 'light.kreabord_gul',  label: 'Yellow' },
+          { id: 'light.kreabord_gron', label: 'Green'  },
+        ],
+      },
+      {
+        name: 'Lounge',
+        entities: [
+          { id: 'light.sofagruppe_beige',  label: 'Beige'   },
+          { id: 'light.sofagruppe_beige2', label: 'Beige 2' },
+          { id: 'light.sofagruppe_rosa',   label: 'Pink'    },
+          { id: 'light.sofagruppe_gul',    label: 'Yellow'  },
+        ],
+      },
+      {
+        name: 'Master Bedroom',
+        entities: [
+          { id: 'light.sovevaerelse_syd',   label: 'South'     },
+          { id: 'light.sovevaerelse_nord',  label: 'North'     },
+          { id: 'light.lightstrip_elias',   label: 'Lightstrip' },
+        ],
+      },
+      {
+        name: 'Master Bathroom',
+        entities: [
+          { id: 'light.badevaerelse_ost', label: 'Bathroom' },
+        ],
+      },
+    ],
+  },
+  {
+    floor: 'Basement',
+    rooms: [
+      {
+        name: 'Basement Bathroom',
+        entities: [
+          { id: 'light.kaelder_badevaerelse', label: 'Bathroom' },
+        ],
+      },
+      {
+        name: 'Basement Bedroom',
+        entities: [
+          { id: 'light.standerlampe_kaelder', label: 'Floor Lamp' },
+          { id: 'light.kaelder_o',            label: 'East'       },
+          { id: 'light.kaelder_v',            label: 'West'       },
+        ],
+      },
+    ],
+  },
+  {
+    floor: 'Barn',
+    rooms: [
+      {
+        name: 'Garage',
+        entities: [
+          { id: 'light.garage_lights', label: 'Garage' },
+        ],
+      },
+      {
+        name: 'Workshop',
+        entities: [
+          { id: 'light.workshop_lights', label: 'Workshop' },
+        ],
+      },
+      {
+        name: 'Arena',
+        entities: [
+          { id: 'light.upper_arena_lights', label: 'Upper' },
+          { id: 'light.lower_arena_lights', label: 'Lower' },
+        ],
+      },
+    ],
+  },
+];
+
+// Flat label lookup: entity_id -> display label
+const ENTITY_LABELS = {};
+FLOORS.forEach(f => f.rooms.forEach(r => r.entities.forEach(e => {
+  ENTITY_LABELS[e.id] = e.label;
+})));
+
+// ─── Bootstrap ───────────────────────────────────────────────────────────────
+async function init() {
+  try {
+    const allStates = await haGet('/api/states');
+    allStates
+      .filter(s => s.entity_id.startsWith('light.'))
+      .forEach(s => { state.entities[s.entity_id] = s; });
+
+    buildUI();
+    connectWSLive();
+  } catch (err) {
+    document.getElementById('loading').innerHTML =
+      `<div style="color:#f87171;text-align:center;padding:20px">
+        Failed to connect to Home Assistant.<br>
+        <small style="color:var(--text-secondary)">${err.message}</small>
+      </div>`;
+  }
+}
+
+function connectWSLive() {
+  const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const ws = new WebSocket(`${wsProto}//${location.host}/api/websocket`);
+  state.ws = ws;
+
+  ws.onmessage = (evt) => {
+    const msg = JSON.parse(evt.data);
+    if (msg.type === 'auth_required') {
+      ws.send(JSON.stringify({ type: 'auth', access_token: '__PROXY_TOKEN__' }));
+    }
+    if (msg.type === 'auth_ok') {
+      ws.send(JSON.stringify({ id: 1, type: 'subscribe_events', event_type: 'state_changed' }));
+    }
+    if (msg.type === 'event' && msg.event?.event_type === 'state_changed') {
+      const d = msg.event.data;
+      if (d.entity_id.startsWith('light.')) {
+        state.entities[d.entity_id] = d.new_state;
+        updateEntityUI(d.entity_id);
+      }
+    }
+  };
+  ws.onclose = () => setTimeout(connectWSLive, 3000);
+}
+
+function buildUI() {
+  const roomsEl = document.getElementById('rooms');
+  roomsEl.innerHTML = '';
+
+  FLOORS.forEach(({ floor, rooms }) => {
+    // Floor section label
+    const floorLabel = document.createElement('div');
+    floorLabel.className = 'section-label';
+    floorLabel.textContent = floor;
+    roomsEl.appendChild(floorLabel);
+
+    rooms.forEach(({ name, entities }) => {
+      const entityIds = entities.map(e => e.id);
+      const card = buildRoomCard(name, name, entityIds);
+      roomsEl.appendChild(card);
+    });
+  });
+
+  document.getElementById('loading').style.display = 'none';
+  roomsEl.style.display = 'flex';
+}
+
+// ─── All Off button ───────────────────────────────────────────────────────────
+document.getElementById('all-off-btn').addEventListener('click', () => {
+  const allIds = FLOORS.flatMap(f => f.rooms.flatMap(r => r.entities.map(e => e.id)));
+  allIds.forEach(id => setOff(id));
+  allIds.forEach(id => {
+    if (state.entities[id]) state.entities[id] = { ...state.entities[id], state: 'off' };
+  });
+  document.querySelectorAll('.room-card').forEach(card => {
+    if (card._entityIds) updateRoomCardState(card, card._entityIds);
+  });
+});
+
+init();
+</script>
+</body>
+</html>
