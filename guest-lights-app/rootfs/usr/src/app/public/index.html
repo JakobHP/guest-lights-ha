@@ -89,6 +89,37 @@
       gap: 12px;
     }
 
+    /* Scene buttons */
+    .scene-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 12px 16px 16px;
+    }
+    .scene-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: filter 0.15s, border-color 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .scene-btn:hover { filter: brightness(1.15); }
+    .scene-btn:active { filter: brightness(0.9); }
+    .scene-btn .scene-icon {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
     /* Room Card */
     .room-card {
       background: var(--surface);
@@ -384,6 +415,10 @@ function callLight(service, entityIds, extra = {}) {
   haPost(`/api/services/light/${service}`, { ...extra, entity_id: Array.isArray(entityIds) ? entityIds : [entityIds] });
 }
 
+function callScene(sceneEntityId) {
+  haPost('/api/services/scene/turn_on', { entity_id: sceneEntityId });
+}
+
 function setOn(entityId) { callLight('turn_on', entityId); }
 function setOff(entityId) { callLight('turn_off', entityId); }
 function setBrightness(entityId, pct) {
@@ -623,6 +658,72 @@ function buildRoomCard(areaId, areaName, entityIds) {
   return card;
 }
 
+// ─── Scene card (no individual bulb controls, just scene buttons) ─────────────
+function buildSceneCard(areaName, entityIds, scenes) {
+  const card = document.createElement('div');
+  card.className = 'room-card';
+
+  // ── Header ──
+  const header = document.createElement('div');
+  header.className = 'room-header';
+  header.style.cursor = 'default';
+
+  const toggle = document.createElement('button');
+  toggle.className = 'room-toggle';
+  toggle.title = 'Turn off all lights';
+
+  const info = document.createElement('div');
+  info.className = 'room-info';
+  const nameEl = document.createElement('div');
+  nameEl.className = 'room-name';
+  nameEl.textContent = areaName;
+  const statusEl = document.createElement('div');
+  statusEl.className = 'room-status';
+  info.append(nameEl, statusEl);
+
+  header.append(toggle, info);
+
+  // ── Scene buttons ──
+  const sceneButtons = document.createElement('div');
+  sceneButtons.className = 'scene-buttons';
+
+  scenes.forEach(({ id, label, color }) => {
+    const btn = document.createElement('button');
+    btn.className = 'scene-btn';
+    const dot = document.createElement('span');
+    dot.className = 'scene-icon';
+    if (color) dot.style.background = color;
+    const txt = document.createTextNode(label);
+    btn.append(dot, txt);
+    btn.addEventListener('click', () => {
+      callScene(id);
+      // Optimistic: mark lights as on
+      entityIds.forEach(eid => {
+        if (state.entities[eid]) state.entities[eid] = { ...state.entities[eid], state: 'on' };
+      });
+      updateRoomCardState(card, entityIds);
+    });
+    sceneButtons.appendChild(btn);
+  });
+
+  card.append(header, sceneButtons);
+
+  // ── Toggle logic ──
+  toggle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const anyOn = entityIds.some(id => state.entities[id]?.state === 'on');
+    entityIds.forEach(id => anyOn ? setOff(id) : setOn(id));
+    entityIds.forEach(id => {
+      if (state.entities[id]) state.entities[id].state = anyOn ? 'off' : 'on';
+    });
+    updateRoomCardState(card, entityIds);
+  });
+
+  updateRoomCardState(card, entityIds);
+  card._entityIds = entityIds;
+  return card;
+}
+
 function buildSliderRow(label, type, min, max, onChange) {
   const row = document.createElement('div');
   row.className = 'control-row';
@@ -828,21 +929,27 @@ const FLOORS = [
     rooms: [
       {
         name: 'Dining Room',
+        scenes: [
+          { id: 'scene.s_spisebord_laes',                   label: 'Normal',          color: '#fecb63' },
+          { id: 'scene.s_spisebord_drommende_skumring',     label: 'Dreamy Dusk',     color: '#feab33' },
+          { id: 'scene.s_spisebord_smaragdgron_flagren',    label: 'Emerald Flicker', color: '#66de98' },
+          { id: 'scene.s_spisebord_solnedgang_pa_savannen', label: 'Savanna Sunset',  color: '#eedb88' },
+        ],
         entities: [
-          { id: 'light.spisebord_1',  label: 'Dining Table 1'  },
-          { id: 'light.spisebord_2',  label: 'Dining Table 2'  },
-          { id: 'light.spisebord_3',  label: 'Dining Table 3'  },
-          { id: 'light.spisebord_4',  label: 'Dining Table 4'  },
-          { id: 'light.spisebord_5',  label: 'Dining Table 5'  },
-          { id: 'light.spisebord_6',  label: 'Dining Table 6'  },
-          { id: 'light.spisebord_7',  label: 'Dining Table 7'  },
-          { id: 'light.spisebord_8',  label: 'Dining Table 8'  },
-          { id: 'light.spisebord_9',  label: 'Dining Table 9'  },
-          { id: 'light.spisebord_10', label: 'Dining Table 10' },
-          { id: 'light.spisebord_11', label: 'Dining Table 11' },
-          { id: 'light.spisebord_12', label: 'Dining Table 12' },
-          { id: 'light.spisebord_13', label: 'Dining Table 13' },
-          { id: 'light.spisebord_14', label: 'Dining Table 14' },
+          { id: 'light.spisebord_1'  },
+          { id: 'light.spisebord_2'  },
+          { id: 'light.spisebord_3'  },
+          { id: 'light.spisebord_4'  },
+          { id: 'light.spisebord_5'  },
+          { id: 'light.spisebord_6'  },
+          { id: 'light.spisebord_7'  },
+          { id: 'light.spisebord_8'  },
+          { id: 'light.spisebord_9'  },
+          { id: 'light.spisebord_10' },
+          { id: 'light.spisebord_11' },
+          { id: 'light.spisebord_12' },
+          { id: 'light.spisebord_13' },
+          { id: 'light.spisebord_14' },
         ],
       },
       {
@@ -1022,9 +1129,11 @@ function buildUI() {
     floorLabel.textContent = floor;
     roomsEl.appendChild(floorLabel);
 
-    rooms.forEach(({ name, entities }) => {
+    rooms.forEach(({ name, entities, scenes }) => {
       const entityIds = entities.map(e => e.id);
-      const card = buildRoomCard(name, name, entityIds);
+      const card = scenes
+        ? buildSceneCard(name, entityIds, scenes)
+        : buildRoomCard(name, name, entityIds);
       roomsEl.appendChild(card);
     });
   });

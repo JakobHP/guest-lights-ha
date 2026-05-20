@@ -24,11 +24,12 @@ const MIME_TYPES = {
   '.svg': 'image/svg+xml',
 };
 
-// Only allow light-related HA API paths
+// Only allow light and scene-related HA API paths
 const ALLOWED_API_PATHS = [
   /^\/api\/states$/,
   /^\/api\/states\/light\./,
   /^\/api\/services\/light\//,
+  /^\/api\/services\/scene\/turn_on$/,
 ];
 
 function isAllowedPath(pathname) {
