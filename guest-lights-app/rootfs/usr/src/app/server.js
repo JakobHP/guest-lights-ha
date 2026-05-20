@@ -36,8 +36,14 @@ function isAllowedPath(pathname) {
   return ALLOWED_API_PATHS.some(r => r.test(pathname));
 }
 
+// ─── Logging ──────────────────────────────────────────────────────────────────
+function log(ip, action, detail) {
+  const ts = new Date().toISOString();
+  console.log(`[${ts}] ${ip} ${action}${detail ? ' ' + detail : ''}`);
+}
+
 // ─── HTTP API Proxy ───────────────────────────────────────────────────────────
-function proxyHARequest(method, haPath, body, res) {
+function proxyHARequest(method, haPath, body, res, ip) {
   const targetUrl = new URL(haPath, HA_URL);
 
   const headers = {
@@ -57,6 +63,18 @@ function proxyHARequest(method, haPath, body, res) {
     const chunks = [];
     proxyRes.on('data', chunk => chunks.push(chunk));
     proxyRes.on('end', () => {
+      // Log service calls (not state reads)
+      if (method === 'POST') {
+        try {
+          const parsed = body ? JSON.parse(body.toString()) : {};
+          const entity = parsed.entity_id
+            ? (Array.isArray(parsed.entity_id) ? parsed.entity_id.join(', ') : parsed.entity_id)
+            : '';
+          log(ip, haPath, entity);
+        } catch {
+          log(ip, haPath);
+        }
+      }
       res.writeHead(proxyRes.statusCode, {
         'Content-Type': 'application/json',
       });
@@ -144,8 +162,11 @@ function encodeWSFrame(payload, opcode = 0x1) {
 
 // ─── WebSocket Proxy with Token Injection ────────────────────────────────────
 function handleWebSocketUpgrade(req, clientSocket, head) {
+  const ip = req.socket.remoteAddress || 'unknown';
   const targetUrl = new URL('/api/websocket', HA_URL);
   const targetPort = parseInt(targetUrl.port) || 80;
+
+  log(ip, 'WS connected');
 
   const haSocket = net.createConnection(targetPort, targetUrl.hostname);
 
@@ -234,15 +255,34 @@ function handleWebSocketUpgrade(req, clientSocket, head) {
       return;
     }
 
-    haSocket.write(chunk);
+    if (tokenInjected) {
+      if (chunk.length > 0) {
+        const { frames } = decodeWSFrames(chunk);
+        frames.forEach(f => { if (f.opcode === 0x1) logWSCommand(f.payload); });
+      }
+      haSocket.write(chunk);
+      return;
+    }
   });
+
+  function logWSCommand(payload) {
+    try {
+      const msg = JSON.parse(payload.toString('utf8'));
+      if (msg.type === 'call_service') {
+        const target = msg.target?.entity_id
+          ? (Array.isArray(msg.target.entity_id) ? msg.target.entity_id.join(', ') : msg.target.entity_id)
+          : (msg.service_data?.entity_id || '');
+        log(ip, `WS ${msg.domain}.${msg.service}`, target);
+      }
+    } catch {}
+  }
 
   clientSocket.on('error', () => haSocket.destroy());
   haSocket.on('error', (err) => {
     console.error('HA WS socket error:', err.message);
     clientSocket.destroy();
   });
-  clientSocket.on('close', () => haSocket.destroy());
+  clientSocket.on('close', () => { log(ip, 'WS disconnected'); haSocket.destroy(); });
   haSocket.on('close', () => clientSocket.destroy());
 }
 
@@ -284,7 +324,8 @@ const server = http.createServer((req, res) => {
     });
     req.on('end', () => {
       const body = chunks.length > 0 ? Buffer.concat(chunks) : null;
-      proxyHARequest(req.method, pathname + (parsedUrl.search || ''), body, res);
+      const ip = req.socket.remoteAddress || 'unknown';
+      proxyHARequest(req.method, pathname + (parsedUrl.search || ''), body, res, ip);
     });
     return;
   }
