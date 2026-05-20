@@ -352,6 +352,10 @@
 
 <div id="rooms" style="display:none"></div>
 
+<div id="ws-error" style="display:none;color:#f87171;text-align:center;padding:10px;font-size:0.85em">
+  Live updates unavailable — reload to retry.
+</div>
+
 <script>
 // ─── State ────────────────────────────────────────────────────────────────────
 const state = {
@@ -377,9 +381,6 @@ async function haPost(path, body) {
 
 // ─── Light control ────────────────────────────────────────────────────────────
 function callLight(service, entityIds, extra = {}) {
-  const target = Array.isArray(entityIds)
-    ? { entity_id: entityIds }
-    : { entity_id: entityIds };
   haPost(`/api/services/light/${service}`, { ...extra, entity_id: Array.isArray(entityIds) ? entityIds : [entityIds] });
 }
 
@@ -995,27 +996,43 @@ async function init() {
 }
 
 function connectWSLive() {
-  const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const ws = new WebSocket(`${wsProto}//${location.host}/api/websocket`);
+  const ws = new WebSocket(`ws://${location.host}/api/websocket`);
   state.ws = ws;
 
   ws.onmessage = (evt) => {
-    const msg = JSON.parse(evt.data);
-    if (msg.type === 'auth_required') {
-      ws.send(JSON.stringify({ type: 'auth', access_token: '__PROXY_TOKEN__' }));
-    }
-    if (msg.type === 'auth_ok') {
-      ws.send(JSON.stringify({ id: 1, type: 'subscribe_events', event_type: 'state_changed' }));
-    }
-    if (msg.type === 'event' && msg.event?.event_type === 'state_changed') {
-      const d = msg.event.data;
-      if (d.entity_id.startsWith('light.')) {
-        state.entities[d.entity_id] = d.new_state;
-        updateEntityUI(d.entity_id);
+    try {
+      const msg = JSON.parse(evt.data);
+      if (msg.type === 'auth_required') {
+        ws.send(JSON.stringify({ type: 'auth', access_token: '__PROXY_TOKEN__' }));
       }
+      if (msg.type === 'auth_ok') {
+        ws.send(JSON.stringify({ id: 1, type: 'subscribe_events', event_type: 'state_changed' }));
+      }
+      if (msg.type === 'event' && msg.event?.event_type === 'state_changed') {
+        const d = msg.event.data;
+        if (d.entity_id.startsWith('light.')) {
+          state.entities[d.entity_id] = d.new_state;
+          updateEntityUI(d.entity_id);
+        }
+      }
+    } catch (e) {
+      console.error('WS message parse error:', e);
     }
   };
-  ws.onclose = () => setTimeout(connectWSLive, 3000);
+
+  let retryCount = 0;
+  ws.onclose = () => {
+    retryCount++;
+    const delay = Math.min(30000, 1000 * Math.pow(2, retryCount - 1));
+    if (retryCount > 10) {
+      console.error('WebSocket: max retries reached, live updates disabled');
+      const el = document.getElementById('ws-error');
+      if (el) el.style.display = '';
+      return;
+    }
+    console.warn(`WebSocket closed, reconnecting in ${delay}ms (attempt ${retryCount})`);
+    setTimeout(connectWSLive, delay);
+  };
 }
 
 function buildUI() {

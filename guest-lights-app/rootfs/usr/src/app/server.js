@@ -1,12 +1,15 @@
 const http = require('http');
-const https = require('https');
-const tls = require('tls');
 const fs = require('fs');
 const path = require('path');
 const net = require('net');
 
 const HA_URL = process.env.HA_URL || 'http://homeassistant.local:8123';
 const HA_TOKEN = process.env.HA_TOKEN || '';
+
+if (!HA_TOKEN) {
+  console.error('FATAL: HA_TOKEN environment variable is not set. Refusing to start.');
+  process.exit(1);
+}
 const PORT = 7080;
 const PUBLIC_ROOT = '/usr/src/app/public';
 const MAX_BODY_SIZE = 1_000_000; // 1 MB
@@ -35,36 +38,35 @@ function isAllowedPath(pathname) {
 // ─── HTTP API Proxy ───────────────────────────────────────────────────────────
 function proxyHARequest(method, haPath, body, res) {
   const targetUrl = new URL(haPath, HA_URL);
-  const isHttps = targetUrl.protocol === 'https:';
-  const lib = isHttps ? https : http;
+
+  const headers = {
+    'Authorization': `Bearer ${HA_TOKEN}`,
+  };
+  if (body) headers['Content-Type'] = 'application/json';
 
   const options = {
     hostname: targetUrl.hostname,
-    port: parseInt(targetUrl.port) || (isHttps ? 443 : 80),
+    port: parseInt(targetUrl.port) || 80,
     path: targetUrl.pathname + (targetUrl.search || ''),
     method: method,
-    headers: {
-      'Authorization': `Bearer ${HA_TOKEN}`,
-      'Content-Type': 'application/json',
-    },
+    headers,
   };
 
-  const proxyReq = lib.request(options, (proxyRes) => {
-    let data = '';
-    proxyRes.on('data', chunk => data += chunk);
+  const proxyReq = http.request(options, (proxyRes) => {
+    const chunks = [];
+    proxyRes.on('data', chunk => chunks.push(chunk));
     proxyRes.on('end', () => {
       res.writeHead(proxyRes.statusCode, {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
       });
-      res.end(data);
+      res.end(Buffer.concat(chunks));
     });
   });
 
   proxyReq.on('error', (err) => {
     console.error('Proxy error:', err.message);
     res.writeHead(502, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'Failed to reach Home Assistant', detail: err.message }));
+    res.end(JSON.stringify({ error: 'Failed to reach Home Assistant' }));
   });
 
   if (body) proxyReq.write(body);
@@ -142,29 +144,11 @@ function encodeWSFrame(payload, opcode = 0x1) {
 // ─── WebSocket Proxy with Token Injection ────────────────────────────────────
 function handleWebSocketUpgrade(req, clientSocket, head) {
   const targetUrl = new URL('/api/websocket', HA_URL);
-  const isHttps = targetUrl.protocol === 'https:';
-  const targetPort = parseInt(targetUrl.port) || (isHttps ? 443 : 80);
+  const targetPort = parseInt(targetUrl.port) || 80;
 
-  const haSocket = isHttps
-    ? tls.connect({ host: targetUrl.hostname, port: targetPort, servername: targetUrl.hostname })
-    : net.createConnection(targetPort, targetUrl.hostname);
+  const haSocket = net.createConnection(targetPort, targetUrl.hostname);
 
   haSocket.on('connect', () => {
-    const upgradeReq = [
-      `GET /api/websocket HTTP/1.1`,
-      `Host: ${targetUrl.hostname}:${targetPort}`,
-      `Upgrade: websocket`,
-      `Connection: Upgrade`,
-      `Sec-WebSocket-Key: ${req.headers['sec-websocket-key']}`,
-      `Sec-WebSocket-Version: ${req.headers['sec-websocket-version'] || '13'}`,
-      ``,
-      ``,
-    ].join('\r\n');
-    haSocket.write(upgradeReq);
-  });
-
-  // tls.connect fires 'secureConnect', not 'connect'
-  haSocket.on('secureConnect', () => {
     const upgradeReq = [
       `GET /api/websocket HTTP/1.1`,
       `Host: ${targetUrl.hostname}:${targetPort}`,
@@ -191,6 +175,16 @@ function handleWebSocketUpgrade(req, clientSocket, head) {
       if (headerEnd === -1) return;
 
       const headerStr = haBuffer.slice(0, headerEnd).toString();
+      const statusMatch = headerStr.match(/^HTTP\/1\.1 (\d+)/);
+      const statusCode = statusMatch ? parseInt(statusMatch[1]) : 0;
+
+      if (statusCode !== 101) {
+        console.error(`HA WebSocket upgrade rejected: HTTP ${statusCode}`);
+        clientSocket.destroy();
+        haSocket.destroy();
+        return;
+      }
+
       const acceptMatch = headerStr.match(/Sec-WebSocket-Accept: (.+)/i);
       const accept = acceptMatch ? acceptMatch[1].trim() : '';
 
@@ -275,20 +269,21 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    let body = '';
+    const chunks = [];
     let size = 0;
     req.on('data', chunk => {
       size += chunk.length;
       if (size > MAX_BODY_SIZE) {
-        req.destroy();
         res.writeHead(413, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Request too large' }));
+        req.destroy();
         return;
       }
-      body += chunk;
+      chunks.push(chunk);
     });
     req.on('end', () => {
-      proxyHARequest(req.method, pathname + (parsedUrl.search || ''), body || null, res);
+      const body = chunks.length > 0 ? Buffer.concat(chunks) : null;
+      proxyHARequest(req.method, pathname + (parsedUrl.search || ''), body, res);
     });
     return;
   }
