@@ -1,6 +1,6 @@
 name: "Guest Lights"
 description: "Let guests control your lights from a simple room-based web page — no Home Assistant account needed."
-version: "1.1.0"
+version: "1.2.0"
 slug: "guest_lights"
 init: false
 url: "https://github.com/JakobHP/guest-lights-ha"
