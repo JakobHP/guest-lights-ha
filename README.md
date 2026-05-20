@@ -1,73 +1,66 @@
 # Guest Lights — Home Assistant Add-on
 
-A minimal, unauthenticated web app for guests to control lights by room.
-Guests can toggle rooms, adjust brightness, pick colors, and control individual
-bulbs — without needing a Home Assistant account.
+Let guests control your lights without giving them access to Home Assistant.
+Exposes a simple room-based UI on your local network — no login, no account,
+no app required. Guests just open a URL.
 
 ---
 
-## Installation (Sideload)
+## Installation
 
-HA Add-on Store only accepts repos accessible via URL. The easiest sideload
-method is to put this folder on a GitHub repo and point HA to it, **or** use
-the local filesystem method below.
+### Option A: Add from GitHub (recommended)
 
-### Option A: GitHub repo (recommended)
-
-1. Fork or push this entire `GuestWebApp` folder to a GitHub repo.
-2. In HA: **Settings → Add-ons → Add-on Store → ⋮ → Repositories**
-3. Add your repo URL: `https://github.com/JakobHP/guest-lights-ha`
-4. The **Guest Lights** add-on will appear — click Install.
-5. Go to **Configuration** tab, fill in:
+1. In HA: **Settings → Add-ons → Add-on Store → ⋮ → Repositories**
+2. Add: `https://github.com/JakobHP/guest-lights-ha`
+3. Find **Guest Lights** in the store and click Install.
+4. Go to the **Configuration** tab and fill in:
    ```
    ha_url: http://homeassistant.local:8123
    ha_token: <your long-lived token>
    ```
-6. Start the add-on. Access the app at `http://homeassistant.local:7080`
+5. Start the add-on. The UI is available at `http://<your-ha-ip>:7080`
 
-### Option B: SSH / Samba local install
+### Option B: Local install via SSH / Samba
 
-1. Copy the `guest-lights-addon` folder to your HA host at:
+1. Copy the `guest-lights-addon` folder to your HA host:
    ```
    /addons/guest_lights/
    ```
-   (Via Samba share: `\\homeassistant\addons\` or SSH into the host)
-
+   (Via Samba: `\\homeassistant\addons\` or directly over SSH)
 2. In HA: **Settings → Add-ons → Add-on Store → ⋮ → Check for updates**
-3. Scroll down to **Local add-ons** — Guest Lights should appear.
-4. Install, configure (ha_url + ha_token), then Start.
+3. Scroll to **Local add-ons** — Guest Lights should appear.
+4. Install, configure, then Start.
 
 ---
 
 ## Configuration
 
-| Key        | Description                                      | Example                              |
-|------------|--------------------------------------------------|--------------------------------------|
-| `ha_url`   | URL of your HA instance (LAN address)            | `http://homeassistant.local:8123`    |
-| `ha_token` | Long-lived access token from HA Profile → Security | `eyJhbG...`                        |
+| Key        | Description                                        | Example                           |
+|------------|----------------------------------------------------|-----------------------------------|
+| `ha_url`   | Local URL of your Home Assistant instance          | `http://homeassistant.local:8123` |
+| `ha_token` | Long-lived access token (HA Profile → Security)    | `eyJhbG...`                       |
 
-**Creating a token:** HA → Profile (bottom-left avatar) → Security tab →
-"Long-lived access tokens" → Create token → copy it.
+To create a token: open HA → click your avatar (bottom-left) → **Security** tab →
+**Long-lived access tokens** → Create token → copy it.
 
 ---
 
 ## Features
 
-- **Room cards** auto-populated from HA Areas
-- **Room-level controls**: toggle all, master brightness, color wheel / warmth slider
-- **Expand** any room to control individual bulbs
-- **Adaptive controls**: RGB bulbs show color wheel; white/CT bulbs show warmth slider
-- **Real-time sync** via WebSocket — changes made elsewhere reflect instantly
-- **All Off** button in the header
-- Token never exposed to guests — proxied server-side
+- **Room cards** organised by area
+- **Room-level controls**: master toggle, brightness, colour wheel or warmth slider
+- **Per-bulb controls**: expand any room to adjust individual lights
+- **Adaptive UI**: RGB bulbs show a colour wheel; white/CT bulbs show a warmth slider
+- **Live sync** via WebSocket — changes from other sources (voice, automations) appear instantly
+- **All Off** button always visible in the header
+- Your HA token is never sent to the browser — the add-on injects it server-side
 
 ---
 
-## Accessing the app
+## Sharing access
 
-`http://<your-ha-ip>:7080`
-
-Share this URL (or a QR code) with guests. No login required.
+Point guests to `http://<your-ha-ip>:7080` — or display it as a QR code.
+No login or Home Assistant account required.
 
 ---
 
@@ -76,11 +69,11 @@ Share this URL (or a QR code) with guests. No login required.
 ```
 Guest browser
     │
-    │ HTTP + WS (port 7080)
+    │  HTTP + WebSocket  (port 7080)
     ▼
-Node.js proxy (in HA add-on container)
-    │  injects real HA token on WS auth
-    │  forwards /api/* to HA
+Node.js proxy  (HA add-on container)
+    │  — injects HA token on WebSocket auth handshake
+    │  — only forwards /api/states and /api/services/light/*
     ▼
-Home Assistant (port 8123)
+Home Assistant  (port 8123)
 ```
