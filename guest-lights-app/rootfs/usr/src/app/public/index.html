@@ -24,6 +24,22 @@
       --transition: 0.18s ease;
     }
 
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f2f2f7;
+        --surface: #ffffff;
+        --surface2: #e9e9ef;
+        --surface3: #dddde6;
+        --border: #d0d0da;
+        --text: #1a1a1f;
+        --text-secondary: #666680;
+        --accent: #c9920a;
+        --accent-dim: rgba(201, 146, 10, 0.12);
+        --on-color: #c9920a;
+        --off-color: #c0c0cc;
+      }
+    }
+
     body {
       background: var(--bg);
       color: var(--text);
@@ -41,9 +57,10 @@
     }
 
     .header-title {
-      font-size: 26px;
+      font-size: clamp(18px, 5.5vw, 26px);
       font-weight: 700;
       letter-spacing: -0.5px;
+      line-height: 1.15;
     }
 
     .header-title span {
@@ -372,7 +389,7 @@
 <body>
 
 <header>
-  <div class="header-title">Guest <span>Lights</span></div>
+  <div class="header-title">Lendrupgaard <span>Lights</span></div>
   <button id="all-off-btn">All Off</button>
 </header>
 
