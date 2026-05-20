@@ -625,9 +625,13 @@ function buildRoomCard(areaId, areaName, entityIds) {
 
   // Color temp (inside expand, at top)
   if (anyCT) {
-    const ctRow = buildCTRow(entityIds.filter(id => getCapabilities(state.entities[id]).hasCT));
-    if (!anyColor) ctRow.style.cssText = 'padding-top: 12px; border-top: 1px solid var(--border);';
-    bulbList.appendChild(ctRow);
+    const { row: ctRowEl, slider: ctSlider, minMireds: ctMin, maxMireds: ctMax } =
+      buildCTRow(entityIds.filter(id => getCapabilities(state.entities[id]).hasCT));
+    if (!anyColor) ctRowEl.style.cssText = 'padding-top: 12px; border-top: 1px solid var(--border);';
+    bulbList.appendChild(ctRowEl);
+    card._ctSlider = ctSlider;
+    card._ctMin = ctMin;
+    card._ctMax = ctMax;
   }
 
   entityIds.forEach(id => {
@@ -755,9 +759,13 @@ function buildSceneCard(areaName, entityIds, scenes) {
   }
 
   if (anyCT) {
-    const ctRow = buildCTRow(entityIds.filter(id => getCapabilities(state.entities[id]).hasCT));
-    if (!anyColor) ctRow.style.cssText = 'padding-top: 12px; border-top: 1px solid var(--border);';
-    bulbList.appendChild(ctRow);
+    const { row: ctRowEl, slider: ctSlider, minMireds: ctMin, maxMireds: ctMax } =
+      buildCTRow(entityIds.filter(id => getCapabilities(state.entities[id]).hasCT));
+    if (!anyColor) ctRowEl.style.cssText = 'padding-top: 12px; border-top: 1px solid var(--border);';
+    bulbList.appendChild(ctRowEl);
+    card._ctSlider = ctSlider;
+    card._ctMin = ctMin;
+    card._ctMax = ctMax;
   }
 
   card.append(header, sceneButtons, controls, bulbList);
@@ -837,7 +845,7 @@ function buildCTRow(entityIds) {
 
   track.appendChild(slider);
   row.append(lbl, track);
-  return row;
+  return { row, slider, minMireds, maxMireds };
 }
 
 function buildBulbItem(entityId) {
@@ -908,7 +916,7 @@ function buildBulbItem(entityId) {
     const minM = attr.min_mireds || 153;
     const maxM = attr.max_mireds || 500;
     const { row, slider } = buildSliderRow('Warmth', 'ct', minM, maxM, (val) => {
-      setColorTemp(entityId, val);
+      setColorTemp(entityId, maxM - (val - minM));
     });
     slider.value = attr.color_temp || Math.round((minM + maxM) / 2);
     item._ctSlider = slider;
@@ -954,6 +962,17 @@ function updateRoomCardState(card, entityIds) {
       card._brightnessSlider.value = Math.round(brightnesses.reduce((a,b) => a+b, 0) / brightnesses.length);
     }
   }
+
+  // Update CT slider to average (inverted: high mireds = right)
+  if (card._ctSlider && anyOn) {
+    const temps = entities
+      .filter(e => e.state === 'on' && e.attributes?.color_temp)
+      .map(e => e.attributes.color_temp);
+    if (temps.length) {
+      const avgMireds = Math.round(temps.reduce((a,b) => a+b, 0) / temps.length);
+      card._ctSlider.value = card._ctMax - (avgMireds - card._ctMin);
+    }
+  }
 }
 
 function updateBulbItemState(item, entityId) {
@@ -965,7 +984,9 @@ function updateBulbItemState(item, entityId) {
     item._brightnessSlider.value = Math.round(entity.attributes.brightness / 255 * 100);
   }
   if (entity.attributes?.color_temp && item._ctSlider) {
-    item._ctSlider.value = entity.attributes.color_temp;
+    const min = parseFloat(item._ctSlider.min);
+    const max = parseFloat(item._ctSlider.max);
+    item._ctSlider.value = max - (entity.attributes.color_temp - min);
   }
 }
 
