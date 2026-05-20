@@ -828,8 +828,9 @@ function buildCTRow(entityIds) {
   slider.addEventListener('input', () => {
     clearTimeout(debounceT);
     debounceT = setTimeout(() => {
+      const mireds = maxMireds - (parseFloat(slider.value) - minMireds);
       entityIds.forEach(id => {
-        if (state.entities[id]?.state === 'on') setColorTemp(id, parseFloat(slider.value));
+        if (state.entities[id]?.state === 'on') setColorTemp(id, mireds);
       });
     }, 80);
   });
