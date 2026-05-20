@@ -16,7 +16,7 @@ the local filesystem method below.
 
 1. Fork or push this entire `GuestWebApp` folder to a GitHub repo.
 2. In HA: **Settings → Add-ons → Add-on Store → ⋮ → Repositories**
-3. Add your repo URL (e.g. `https://github.com/yourusername/guest-lights`)
+3. Add your repo URL: `https://github.com/JakobHP/guest-lights-ha`
 4. The **Guest Lights** add-on will appear — click Install.
 5. Go to **Configuration** tab, fill in:
    ```
