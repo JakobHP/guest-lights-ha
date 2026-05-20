@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
@@ -8,6 +8,12 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
+      --radius: 16px;
+      --radius-sm: 10px;
+      --transition: 0.18s ease;
+    }
+
+    [data-theme="dark"] {
       --bg: #0f0f11;
       --surface: #1a1a1f;
       --surface2: #242429;
@@ -19,25 +25,20 @@
       --accent-dim: rgba(245, 200, 66, 0.15);
       --on-color: #f5c842;
       --off-color: #44445a;
-      --radius: 16px;
-      --radius-sm: 10px;
-      --transition: 0.18s ease;
     }
 
-    @media (prefers-color-scheme: light) {
-      :root {
-        --bg: #f2f2f7;
-        --surface: #ffffff;
-        --surface2: #e9e9ef;
-        --surface3: #dddde6;
-        --border: #d0d0da;
-        --text: #1a1a1f;
-        --text-secondary: #666680;
-        --accent: #c9920a;
-        --accent-dim: rgba(201, 146, 10, 0.12);
-        --on-color: #c9920a;
-        --off-color: #c0c0cc;
-      }
+    [data-theme="light"] {
+      --bg: #f2f2f7;
+      --surface: #ffffff;
+      --surface2: #e9e9ef;
+      --surface3: #dddde6;
+      --border: #d0d0da;
+      --text: #1a1a1f;
+      --text-secondary: #666680;
+      --accent: #c9920a;
+      --accent-dim: rgba(201, 146, 10, 0.12);
+      --on-color: #c9920a;
+      --off-color: #c0c0cc;
     }
 
     body {
@@ -66,6 +67,23 @@
     .header-title span {
       color: var(--accent);
     }
+
+    #theme-toggle {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--transition);
+      flex-shrink: 0;
+    }
+    #theme-toggle:hover { background: var(--surface3); color: var(--text); }
 
     #all-off-btn {
       background: var(--surface2);
@@ -390,6 +408,7 @@
 
 <header>
   <div class="header-title">Lendrupgaard <span>Lights</span></div>
+  <button id="theme-toggle" title="Toggle theme">☀️</button>
   <button id="all-off-btn">All Off</button>
 </header>
 
@@ -405,6 +424,29 @@
 </div>
 
 <script>
+// ─── Theme ────────────────────────────────────────────────────────────────────
+(function () {
+  const saved = localStorage.getItem('theme');
+  if (saved === 'light' || saved === 'dark') {
+    document.documentElement.dataset.theme = saved;
+  }
+  // default is already 'dark' from the html attribute
+})();
+
+function updateThemeToggle() {
+  const isDark = document.documentElement.dataset.theme === 'dark';
+  document.getElementById('theme-toggle').textContent = isDark ? '☀️' : '🌙';
+}
+
+document.getElementById('theme-toggle').addEventListener('click', () => {
+  const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = next;
+  localStorage.setItem('theme', next);
+  updateThemeToggle();
+});
+
+updateThemeToggle();
+
 // ─── State ────────────────────────────────────────────────────────────────────
 const state = {
   entities: {},  // entity_id -> state object from HA
