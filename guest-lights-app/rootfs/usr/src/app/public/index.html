@@ -660,7 +660,7 @@ function buildRoomCard(areaId, areaName, entityIds) {
   return card;
 }
 
-// ─── Scene card (no individual bulb controls, just scene buttons) ─────────────
+// ─── Scene card (scene buttons + collapsible color/CT controls) ──────────────
 function buildSceneCard(areaName, entityIds, scenes) {
   const card = document.createElement('div');
   card.className = 'room-card';
@@ -668,7 +668,6 @@ function buildSceneCard(areaName, entityIds, scenes) {
   // ── Header ──
   const header = document.createElement('div');
   header.className = 'room-header';
-  header.style.cursor = 'default';
 
   const toggle = document.createElement('button');
   toggle.className = 'room-toggle';
@@ -683,9 +682,13 @@ function buildSceneCard(areaName, entityIds, scenes) {
   statusEl.className = 'room-status';
   info.append(nameEl, statusEl);
 
-  header.append(toggle, info);
+  const expandIcon = document.createElement('div');
+  expandIcon.className = 'room-expand-icon';
+  expandIcon.innerHTML = '&#8964;';
 
-  // ── Scene buttons ──
+  header.append(toggle, info, expandIcon);
+
+  // ── Scene buttons (always visible) ──
   const sceneButtons = document.createElement('div');
   sceneButtons.className = 'scene-buttons';
 
@@ -699,7 +702,6 @@ function buildSceneCard(areaName, entityIds, scenes) {
     btn.append(dot, txt);
     btn.addEventListener('click', () => {
       callScene(id);
-      // Optimistic: mark lights as on
       entityIds.forEach(eid => {
         if (state.entities[eid]) state.entities[eid] = { ...state.entities[eid], state: 'on' };
       });
@@ -708,9 +710,7 @@ function buildSceneCard(areaName, entityIds, scenes) {
     sceneButtons.appendChild(btn);
   });
 
-  card.append(header, sceneButtons);
-
-  // ── Room-level controls (brightness / color / CT) ──
+  // ── Always-visible controls (brightness only) ──
   const controls = document.createElement('div');
   controls.className = 'room-controls';
 
@@ -721,12 +721,17 @@ function buildSceneCard(areaName, entityIds, scenes) {
   });
   controls.appendChild(brightnessRow.row);
 
+  // ── Collapsible section (color / CT) ──
+  const bulbList = document.createElement('div');
+  bulbList.className = 'bulb-list';
+
   const anyColor = entityIds.some(id => getCapabilities(state.entities[id]).hasColor);
   const anyCT    = entityIds.some(id => getCapabilities(state.entities[id]).hasCT);
 
   if (anyColor) {
     const colorRow = document.createElement('div');
     colorRow.className = 'control-row';
+    colorRow.style.cssText = 'padding: 12px 16px 0; border-top: 1px solid var(--border);';
     const lbl = document.createElement('div');
     lbl.className = 'control-label';
     lbl.textContent = 'Color';
@@ -740,7 +745,7 @@ function buildSceneCard(areaName, entityIds, scenes) {
     preview.className = 'color-preview';
     wheelWrap.append(canvas, preview);
     colorRow.append(lbl, wheelWrap);
-    controls.appendChild(colorRow);
+    bulbList.appendChild(colorRow);
     setupColorWheel(canvas, preview, (h, s) => {
       entityIds.forEach(id => {
         if (state.entities[id]?.state === 'on' && getCapabilities(state.entities[id]).hasColor)
@@ -751,10 +756,11 @@ function buildSceneCard(areaName, entityIds, scenes) {
 
   if (anyCT) {
     const ctRow = buildCTRow(entityIds.filter(id => getCapabilities(state.entities[id]).hasCT));
-    controls.appendChild(ctRow);
+    if (!anyColor) ctRow.style.cssText = 'padding-top: 12px; border-top: 1px solid var(--border);';
+    bulbList.appendChild(ctRow);
   }
 
-  card.appendChild(controls);
+  card.append(header, sceneButtons, controls, bulbList);
 
   // ── Toggle logic ──
   toggle.addEventListener('click', (e) => {
@@ -765,6 +771,10 @@ function buildSceneCard(areaName, entityIds, scenes) {
       if (state.entities[id]) state.entities[id].state = anyOn ? 'off' : 'on';
     });
     updateRoomCardState(card, entityIds);
+  });
+
+  header.addEventListener('click', () => {
+    card.classList.toggle('expanded');
   });
 
   updateRoomCardState(card, entityIds);
