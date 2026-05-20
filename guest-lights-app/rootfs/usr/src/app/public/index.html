@@ -708,6 +708,52 @@ function buildSceneCard(areaName, entityIds, scenes) {
 
   card.append(header, sceneButtons);
 
+  // ── Room-level controls (brightness / color / CT) ──
+  const controls = document.createElement('div');
+  controls.className = 'room-controls';
+
+  const brightnessRow = buildSliderRow('Brightness', 'brightness', 0, 100, (val) => {
+    entityIds.forEach(id => {
+      if (state.entities[id]?.state === 'on') setBrightness(id, val);
+    });
+  });
+  controls.appendChild(brightnessRow.row);
+
+  const anyColor = entityIds.some(id => getCapabilities(state.entities[id]).hasColor);
+  const anyCT    = entityIds.some(id => getCapabilities(state.entities[id]).hasCT);
+
+  if (anyColor) {
+    const colorRow = document.createElement('div');
+    colorRow.className = 'control-row';
+    const lbl = document.createElement('div');
+    lbl.className = 'control-label';
+    lbl.textContent = 'Color';
+    const wheelWrap = document.createElement('div');
+    wheelWrap.className = 'color-wheel-wrap';
+    const canvas = document.createElement('canvas');
+    canvas.className = 'color-wheel-canvas';
+    canvas.width = 200; canvas.height = 200;
+    canvas.setAttribute('data-display-size', '120');
+    const preview = document.createElement('div');
+    preview.className = 'color-preview';
+    wheelWrap.append(canvas, preview);
+    colorRow.append(lbl, wheelWrap);
+    controls.appendChild(colorRow);
+    setupColorWheel(canvas, preview, (h, s) => {
+      entityIds.forEach(id => {
+        if (state.entities[id]?.state === 'on' && getCapabilities(state.entities[id]).hasColor)
+          setHsColor(id, h, s);
+      });
+    });
+  }
+
+  if (anyCT) {
+    const ctRow = buildCTRow(entityIds.filter(id => getCapabilities(state.entities[id]).hasCT));
+    controls.appendChild(ctRow);
+  }
+
+  card.appendChild(controls);
+
   // ── Toggle logic ──
   toggle.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -721,6 +767,7 @@ function buildSceneCard(areaName, entityIds, scenes) {
 
   updateRoomCardState(card, entityIds);
   card._entityIds = entityIds;
+  card._brightnessSlider = brightnessRow.slider;
   return card;
 }
 
