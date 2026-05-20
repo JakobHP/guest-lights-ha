@@ -534,7 +534,7 @@ function getCapabilities(entity) {
   const attr = entity?.attributes || {};
   const modes = attr.supported_color_modes || [];
   const hasColor = modes.some(m => ['hs', 'rgb', 'rgbw', 'rgbww', 'xy'].includes(m));
-  const hasCT = modes.includes('color_temp');
+  const hasCT = modes.includes('color_temp') || modes.includes('rgbww') || modes.includes('rgbw');
   const hasBrightness = attr.supported_features > 0 || modes.length > 0;
   return { hasColor, hasCT, hasBrightness };
 }
@@ -807,6 +807,7 @@ function buildSliderRow(label, type, min, max, onChange) {
 }
 
 function buildCTRow(entityIds) {
+  if (!entityIds.length) return document.createElement('div');
   const allAttrs = entityIds.map(id => state.entities[id]?.attributes || {});
   const minMireds = Math.min(...allAttrs.map(a => a.min_mireds || 153));
   const maxMireds = Math.max(...allAttrs.map(a => a.max_mireds || 500));
