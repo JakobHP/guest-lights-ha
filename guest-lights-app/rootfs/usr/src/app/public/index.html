@@ -25,6 +25,7 @@
       --accent-dim: rgba(245, 200, 66, 0.15);
       --on-color: #f5c842;
       --off-color: #44445a;
+      --bulb-zone: #252530;
     }
 
     [data-theme="light"] {
@@ -39,6 +40,7 @@
       --accent-dim: rgba(201, 146, 10, 0.12);
       --on-color: #c9920a;
       --off-color: #c0c0cc;
+      --bulb-zone: #f5f0e8;
     }
 
     body {
@@ -213,12 +215,52 @@
     }
 
     .room-expand-icon {
-      color: var(--text-secondary);
-      font-size: 18px;
-      transition: transform var(--transition);
       flex-shrink: 0;
+      width: 28px; height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform var(--transition);
+      color: var(--text-secondary);
     }
     .room-card.expanded .room-expand-icon { transform: rotate(180deg); }
+    .room-expand-icon::before {
+      content: '';
+      display: block;
+      width: 20px;
+      height: 20px;
+      background-color: var(--text-secondary);
+      -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 5.5 L8 10.5 L13 5.5' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E") no-repeat center / contain;
+      mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 5.5 L8 10.5 L13 5.5' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E") no-repeat center / contain;
+    }
+
+    .pin-btn {
+      flex-shrink: 0;
+      width: 28px; height: 28px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0.66;
+      transition: opacity var(--transition);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .pin-btn:hover { opacity: 0.85; }
+    .pin-btn.pinned { opacity: 1; }
+    .pin-btn::before {
+      content: '';
+      display: block;
+      width: 20px;
+      height: 20px;
+      background-color: var(--text-secondary);
+      transition: background-color var(--transition);
+      -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' stroke-width='2.3' stroke='currentColor' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 4.5l-4 4l-4 1.5l-1.5 1.5l7 7l1.5 -1.5l1.5 -4l4 -4'/%3E%3Cpath d='M9 15l-4.5 4.5'/%3E%3Cpath d='M14.5 4l5.5 5.5'/%3E%3C/svg%3E") no-repeat center / contain;
+      mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' stroke-width='2.3' stroke='currentColor' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 4.5l-4 4l-4 1.5l-1.5 1.5l7 7l1.5 -1.5l1.5 -4l4 -4'/%3E%3Cpath d='M9 15l-4.5 4.5'/%3E%3Cpath d='M14.5 4l5.5 5.5'/%3E%3C/svg%3E") no-repeat center / contain;
+    }
+    .pin-btn.pinned::before { background-color: var(--accent); }
 
     /* Room-level controls */
     .room-controls {
@@ -283,7 +325,7 @@
       flex: 1;
     }
     .ct-track input[type=range] {
-      background: linear-gradient(to right, #ffd27f, #ffffff, #c9e8ff);
+      background: linear-gradient(to right, #c9e8ff, #ffffff, #ffd27f);
     }
 
     /* Color Wheel */
@@ -309,11 +351,25 @@
       background: white;
     }
 
+    /* Room-level collapsible controls (color / CT) — card background, no tint */
+    .expand-controls {
+      display: none;
+      flex-direction: column;
+      gap: 12px;
+      padding: 14px 16px 16px;
+      border-top: 1px solid var(--border);
+    }
+    .room-card.expanded .expand-controls { display: flex; }
+
     /* Bulb list */
     .bulb-list {
       display: none;
       flex-direction: column;
       gap: 0;
+      background: var(--bulb-zone);
+      border-top: 2px solid var(--accent-dim);
+      border-radius: 0 0 var(--radius) var(--radius);
+      overflow: hidden;
     }
     .room-card.expanded .bulb-list { display: flex; }
 
@@ -321,6 +377,8 @@
       border-top: 1px solid var(--border);
       padding: 12px 16px;
     }
+    .bulb-item:first-child { border-top: none; }
+    .bulb-list > *:first-child { border-top: none !important; }
 
     .bulb-header {
       display: flex;
@@ -395,7 +453,9 @@
 
     /* Disabled state */
     .room-card.all-off .room-controls,
+    .room-card.all-off .expand-controls,
     .room-card.all-off .bulb-list { opacity: 0.5; pointer-events: none; }
+    .room-card.all-off.expanded .expand-controls,
     .room-card.all-off.expanded .bulb-list { pointer-events: auto; opacity: 1; }
 
     @media (min-width: 600px) {
@@ -408,8 +468,10 @@
 
 <header>
   <div class="header-title">Lendrupgaard <span>Lights</span></div>
-  <button id="theme-toggle" title="Toggle theme">☀️</button>
-  <button id="all-off-btn">All Off</button>
+  <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+    <button id="all-off-btn">All Off</button>
+    <button id="theme-toggle" title="Toggle theme">◑</button>
+  </div>
 </header>
 
 <div id="loading">
@@ -433,19 +495,11 @@
   // default is already 'dark' from the html attribute
 })();
 
-function updateThemeToggle() {
-  const isDark = document.documentElement.dataset.theme === 'dark';
-  document.getElementById('theme-toggle').textContent = isDark ? '☀️' : '🌙';
-}
-
 document.getElementById('theme-toggle').addEventListener('click', () => {
   const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
   document.documentElement.dataset.theme = next;
   localStorage.setItem('theme', next);
-  updateThemeToggle();
 });
-
-updateThemeToggle();
 
 // ─── State ────────────────────────────────────────────────────────────────────
 const state = {
@@ -598,6 +652,33 @@ function getCapabilities(entity) {
   return { hasColor, hasCT, hasBrightness };
 }
 
+// ─── Pinned rooms ─────────────────────────────────────────────────────────────
+function getPinned() {
+  try { return JSON.parse(localStorage.getItem('pinnedRooms') || '[]'); }
+  catch { return []; }
+}
+function setPinned(arr) {
+  localStorage.setItem('pinnedRooms', JSON.stringify(arr));
+}
+function togglePin(roomName) {
+  const pinned = getPinned();
+  const idx = pinned.indexOf(roomName);
+  if (idx === -1) pinned.push(roomName);
+  else pinned.splice(idx, 1);
+  setPinned(pinned);
+  buildUI();
+}
+function buildPinButton(roomName) {
+  const btn = document.createElement('button');
+  btn.className = 'pin-btn' + (getPinned().includes(roomName) ? ' pinned' : '');
+  btn.title = 'Pin to top';
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    togglePin(roomName);
+  });
+  return btn;
+}
+
 // ─── UI: Room card builder ────────────────────────────────────────────────────
 function buildRoomCard(areaId, areaName, entityIds) {
   const card = document.createElement('div');
@@ -623,9 +704,9 @@ function buildRoomCard(areaId, areaName, entityIds) {
 
   const expandIcon = document.createElement('div');
   expandIcon.className = 'room-expand-icon';
-  expandIcon.innerHTML = '&#8964;';
+  
 
-  header.append(toggle, info, expandIcon);
+  header.append(toggle, info, buildPinButton(areaName), expandIcon);
 
   // ── Room-level controls ──
   const controls = document.createElement('div');
@@ -643,62 +724,65 @@ function buildRoomCard(areaId, areaName, entityIds) {
   });
   controls.appendChild(brightnessRow.row);
 
-  // ── Bulb list (also contains color/CT room controls) ──
-  const bulbList = document.createElement('div');
-  bulbList.className = 'bulb-list';
+  // ── Collapsible room-level controls (color / CT) — card background ──
+  const expandControls = document.createElement('div');
+  expandControls.className = 'expand-controls';
 
-  // Color controls (inside expand, at top)
   let colorWheelEl = null, colorPreviewEl = null;
   if (anyColor) {
     const colorRow = document.createElement('div');
     colorRow.className = 'control-row';
-    colorRow.style.cssText = 'padding: 12px 16px 0; border-top: 1px solid var(--border);';
     const lbl = document.createElement('div');
     lbl.className = 'control-label';
     lbl.textContent = 'Color';
     const wheelWrap = document.createElement('div');
     wheelWrap.className = 'color-wheel-wrap';
-
     const canvas = document.createElement('canvas');
     canvas.className = 'color-wheel-canvas';
     canvas.width = 200; canvas.height = 200;
     canvas.setAttribute('data-display-size', '120');
-
     const preview = document.createElement('div');
     preview.className = 'color-preview';
-
     wheelWrap.append(canvas, preview);
     colorRow.append(lbl, wheelWrap);
-    bulbList.appendChild(colorRow);
+    expandControls.appendChild(colorRow);
     colorWheelEl = canvas;
     colorPreviewEl = preview;
-
     setupColorWheel(canvas, preview, (h, s) => {
       entityIds.forEach(id => {
-        if (state.entities[id]?.state === 'on' && getCapabilities(state.entities[id]).hasColor) {
+        if (state.entities[id]?.state === 'on' && getCapabilities(state.entities[id]).hasColor)
           setHsColor(id, h, s);
-        }
       });
     });
   }
 
-  // Color temp (inside expand, at top)
   if (anyCT) {
-    const { row: ctRowEl, slider: ctSlider, minMireds: ctMin, maxMireds: ctMax } =
-      buildCTRow(entityIds.filter(id => getCapabilities(state.entities[id]).hasCT));
-    if (!anyColor) ctRowEl.style.cssText = 'padding-top: 12px; border-top: 1px solid var(--border);';
-    bulbList.appendChild(ctRowEl);
-    card._ctSlider = ctSlider;
-    card._ctMin = ctMin;
-    card._ctMax = ctMax;
+    const ctIds = entityIds.filter(id => getCapabilities(state.entities[id]).hasCT);
+    if (ctIds.length) {
+      const { row: ctRowEl, slider: ctSlider, minMireds: ctMin, maxMireds: ctMax } = buildCTRow(ctIds);
+      expandControls.appendChild(ctRowEl);
+      card._ctSlider = ctSlider;
+      card._ctMin = ctMin;
+      card._ctMax = ctMax;
+    }
   }
 
-  entityIds.forEach(id => {
-    const bulbEl = buildBulbItem(id);
-    bulbList.appendChild(bulbEl);
-  });
+  // ── Bulb list (individual bulbs only — tinted zone) ──
+  const bulbList = document.createElement('div');
+  bulbList.className = 'bulb-list';
 
-  card.append(header, controls, bulbList);
+  if (entityIds.length > 1) {
+    entityIds.forEach(id => {
+      const bulbEl = buildBulbItem(id);
+      bulbList.appendChild(bulbEl);
+    });
+  }
+
+  // Hide expand arrow if nothing to expand
+  const hasExpandContent = anyColor || anyCT || entityIds.length > 1;
+  if (!hasExpandContent) expandIcon.style.display = 'none';
+
+  card.append(header, controls, expandControls, bulbList);
 
   // ── Toggle logic ──
   toggle.addEventListener('click', (e) => {
@@ -724,7 +808,7 @@ function buildRoomCard(areaId, areaName, entityIds) {
 }
 
 // ─── Scene card (scene buttons + collapsible color/CT controls) ──────────────
-function buildSceneCard(areaName, entityIds, scenes) {
+function buildSceneCard(areaName, entityIds, scenes, noCT = false) {
   const card = document.createElement('div');
   card.className = 'room-card';
 
@@ -734,7 +818,7 @@ function buildSceneCard(areaName, entityIds, scenes) {
 
   const toggle = document.createElement('button');
   toggle.className = 'room-toggle';
-  toggle.title = 'Turn off all lights';
+  toggle.title = 'Toggle lights';
 
   const info = document.createElement('div');
   info.className = 'room-info';
@@ -747,22 +831,19 @@ function buildSceneCard(areaName, entityIds, scenes) {
 
   const expandIcon = document.createElement('div');
   expandIcon.className = 'room-expand-icon';
-  expandIcon.innerHTML = '&#8964;';
-
-  header.append(toggle, info, expandIcon);
+  
+  header.append(toggle, info, buildPinButton(areaName), expandIcon);
 
   // ── Scene buttons (always visible) ──
   const sceneButtons = document.createElement('div');
   sceneButtons.className = 'scene-buttons';
-
   scenes.forEach(({ id, label, color }) => {
     const btn = document.createElement('button');
     btn.className = 'scene-btn';
     const dot = document.createElement('span');
     dot.className = 'scene-icon';
     if (color) dot.style.background = color;
-    const txt = document.createTextNode(label);
-    btn.append(dot, txt);
+    btn.append(dot, document.createTextNode(label));
     btn.addEventListener('click', () => {
       callScene(id);
       entityIds.forEach(eid => {
@@ -776,7 +857,6 @@ function buildSceneCard(areaName, entityIds, scenes) {
   // ── Always-visible controls (brightness only) ──
   const controls = document.createElement('div');
   controls.className = 'room-controls';
-
   const brightnessRow = buildSliderRow('Brightness', 'brightness', 0, 100, (val) => {
     entityIds.forEach(id => {
       if (state.entities[id]?.state === 'on') setBrightness(id, val);
@@ -784,17 +864,16 @@ function buildSceneCard(areaName, entityIds, scenes) {
   });
   controls.appendChild(brightnessRow.row);
 
-  // ── Collapsible section (color / CT) ──
-  const bulbList = document.createElement('div');
-  bulbList.className = 'bulb-list';
+  // ── Collapsible room-level controls (color / CT) — card background ──
+  const expandControls = document.createElement('div');
+  expandControls.className = 'expand-controls';
 
   const anyColor = entityIds.some(id => getCapabilities(state.entities[id]).hasColor);
-  const anyCT    = entityIds.some(id => getCapabilities(state.entities[id]).hasCT);
+  const anyCT    = !noCT && entityIds.some(id => getCapabilities(state.entities[id]).hasCT);
 
   if (anyColor) {
     const colorRow = document.createElement('div');
     colorRow.className = 'control-row';
-    colorRow.style.cssText = 'padding: 12px 16px 0; border-top: 1px solid var(--border);';
     const lbl = document.createElement('div');
     lbl.className = 'control-label';
     lbl.textContent = 'Color';
@@ -808,7 +887,7 @@ function buildSceneCard(areaName, entityIds, scenes) {
     preview.className = 'color-preview';
     wheelWrap.append(canvas, preview);
     colorRow.append(lbl, wheelWrap);
-    bulbList.appendChild(colorRow);
+    expandControls.appendChild(colorRow);
     setupColorWheel(canvas, preview, (h, s) => {
       entityIds.forEach(id => {
         if (state.entities[id]?.state === 'on' && getCapabilities(state.entities[id]).hasColor)
@@ -818,16 +897,23 @@ function buildSceneCard(areaName, entityIds, scenes) {
   }
 
   if (anyCT) {
-    const { row: ctRowEl, slider: ctSlider, minMireds: ctMin, maxMireds: ctMax } =
-      buildCTRow(entityIds.filter(id => getCapabilities(state.entities[id]).hasCT));
-    if (!anyColor) ctRowEl.style.cssText = 'padding-top: 12px; border-top: 1px solid var(--border);';
-    bulbList.appendChild(ctRowEl);
-    card._ctSlider = ctSlider;
-    card._ctMin = ctMin;
-    card._ctMax = ctMax;
+    const ctIds = entityIds.filter(id => getCapabilities(state.entities[id]).hasCT);
+    if (ctIds.length) {
+      const { row: ctRowEl, slider: ctSlider, minMireds: ctMin, maxMireds: ctMax } = buildCTRow(ctIds);
+      expandControls.appendChild(ctRowEl);
+      card._ctSlider = ctSlider;
+      card._ctMin = ctMin;
+      card._ctMax = ctMax;
+    }
   }
 
-  card.append(header, sceneButtons, controls, bulbList);
+  // Hide expand arrow if nothing to show on expand
+  const hasExpandContent = anyColor || anyCT;
+  if (!hasExpandContent) expandIcon.style.display = 'none';
+
+  card.append(header, sceneButtons, controls, expandControls);
+
+  header.addEventListener('click', () => { if (hasExpandContent) card.classList.toggle('expanded'); });
 
   // ── Toggle logic ──
   toggle.addEventListener('click', (e) => {
@@ -840,13 +926,10 @@ function buildSceneCard(areaName, entityIds, scenes) {
     updateRoomCardState(card, entityIds);
   });
 
-  header.addEventListener('click', () => {
-    card.classList.toggle('expanded');
-  });
-
-  updateRoomCardState(card, entityIds);
   card._entityIds = entityIds;
+  card._sceneCard = true;
   card._brightnessSlider = brightnessRow.slider;
+  updateRoomCardState(card, entityIds);
   return card;
 }
 
@@ -874,7 +957,7 @@ function buildSliderRow(label, type, min, max, onChange) {
 }
 
 function buildCTRow(entityIds) {
-  if (!entityIds.length) return document.createElement('div');
+  if (!entityIds.length) return { row: document.createElement('div'), slider: null, minMireds: 153, maxMireds: 500 };
   const allAttrs = entityIds.map(id => state.entities[id]?.attributes || {});
   const minMireds = Math.min(...allAttrs.map(a => a.min_mireds || 153));
   const maxMireds = Math.max(...allAttrs.map(a => a.max_mireds || 500));
@@ -934,7 +1017,7 @@ function buildBulbItem(entityId) {
 
   // Brightness
   if (cap.hasBrightness) {
-    const { row, slider } = buildSliderRow('Bright', 'brightness', 0, 100, (val) => {
+    const { row, slider } = buildSliderRow('Brightness', 'brightness', 0, 100, (val) => {
       setBrightness(entityId, val);
     });
     slider.value = attr.brightness ? Math.round(attr.brightness / 255 * 100) : 100;
@@ -1006,9 +1089,13 @@ function updateRoomCardState(card, entityIds) {
 
   if (toggle) toggle.classList.toggle('on', anyOn);
   if (status) {
-    status.textContent = anyOn
-      ? onCount === total ? 'All on' : `${onCount} of ${total} on`
-      : 'All off';
+    if (total === 1 || card._sceneCard) {
+      status.textContent = anyOn ? 'On' : 'Off';
+    } else {
+      status.textContent = anyOn
+        ? onCount === total ? 'All on' : `${onCount} of ${total} on`
+        : 'All off';
+    }
   }
   card.classList.toggle('has-on', anyOn);
 
@@ -1070,6 +1157,7 @@ const FLOORS = [
     rooms: [
       {
         name: 'Dining Room',
+        noCT: true,
         scenes: [
           { id: 'scene.s_spisebord_laes',                   label: 'Normal',          color: '#fecb63' },
           { id: 'scene.s_spisebord_drommende_skumring',     label: 'Dreamy Dusk',     color: '#feab33' },
@@ -1263,17 +1351,41 @@ function buildUI() {
   const roomsEl = document.getElementById('rooms');
   roomsEl.innerHTML = '';
 
+  const pinned = getPinned();
+
+  // ── Pinned section ──
+  if (pinned.length > 0) {
+    const pinnedLabel = document.createElement('div');
+    pinnedLabel.className = 'section-label';
+    pinnedLabel.textContent = 'Pinned';
+    roomsEl.appendChild(pinnedLabel);
+
+    pinned.forEach(roomName => {
+      const room = FLOORS.flatMap(f => f.rooms).find(r => r.name === roomName);
+      if (!room) return;
+      const { name, entities, scenes, noCT } = room;
+      const entityIds = entities.map(e => e.id);
+      const card = scenes
+        ? buildSceneCard(name, entityIds, scenes, noCT)
+        : buildRoomCard(name, name, entityIds);
+      roomsEl.appendChild(card);
+    });
+  }
+
+  // ── Floor sections (skip pinned rooms) ──
   FLOORS.forEach(({ floor, rooms }) => {
-    // Floor section label
+    const unpinned = rooms.filter(r => !pinned.includes(r.name));
+    if (unpinned.length === 0) return; // whole floor pinned — skip label too
+
     const floorLabel = document.createElement('div');
     floorLabel.className = 'section-label';
     floorLabel.textContent = floor;
     roomsEl.appendChild(floorLabel);
 
-    rooms.forEach(({ name, entities, scenes }) => {
+    unpinned.forEach(({ name, entities, scenes, noCT }) => {
       const entityIds = entities.map(e => e.id);
       const card = scenes
-        ? buildSceneCard(name, entityIds, scenes)
+        ? buildSceneCard(name, entityIds, scenes, noCT)
         : buildRoomCard(name, name, entityIds);
       roomsEl.appendChild(card);
     });
