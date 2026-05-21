@@ -10,8 +10,8 @@ if (!HA_TOKEN) {
   console.error('FATAL: HA_TOKEN environment variable is not set. Refusing to start.');
   process.exit(1);
 }
-const PORT = 7080;
-const PUBLIC_ROOT = '/usr/src/app/public';
+const PORT = parseInt(process.env.PORT || '7080');
+const PUBLIC_ROOT = process.env.PUBLIC_ROOT || '/usr/src/app/public';
 const MAX_BODY_SIZE = 1_000_000; // 1 MB
 
 const MIME_TYPES = {
