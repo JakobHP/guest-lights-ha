@@ -1,0 +1,19 @@
+services:
+  mock-ha:
+    build:
+      context: .
+      dockerfile: dev/Dockerfile.mock
+    ports:
+      - "8123:8123"
+
+  app:
+    build:
+      context: .
+      dockerfile: dev/Dockerfile.app
+    ports:
+      - "7080:7080"
+    environment:
+      HA_URL: http://mock-ha:8123
+      HA_TOKEN: dev-token
+    depends_on:
+      - mock-ha
