@@ -22,7 +22,7 @@ no app required. Guests just open a URL.
 
 ### Option B: Local install via SSH / Samba
 
-1. Copy the `guest-lights-addon` folder to your HA host:
+1. Copy the `guest-lights-app` folder to your HA host:
    ```
    /addons/guest_lights/
    ```
@@ -47,11 +47,15 @@ To create a token: open HA → click your avatar (bottom-left) → **Security** 
 
 ## Features
 
-- **Room cards** organised by area
-- **Room-level controls**: master toggle, brightness, colour wheel or warmth slider
-- **Per-bulb controls**: expand any room to adjust individual lights
-- **Adaptive UI**: RGB bulbs show a colour wheel; white/CT bulbs show a warmth slider
+- **Room cards** organised by floor
+- **Room-level controls**: master on/off toggle, brightness slider — always visible
+- **Expandable controls**: colour wheel and warmth slider revealed on tap
+- **Per-bulb controls**: expand any multi-bulb room to adjust individual lights
+- **Scene buttons**: rooms like Dining Room offer preset lighting scenes
+- **Adaptive UI**: RGB bulbs show a colour wheel; white/CT bulbs show a warmth slider; single-bulb rooms suppress redundant per-bulb controls
+- **Pinnable rooms**: tap the pin icon on any card to move it to the top — persists across reloads
 - **Live sync** via WebSocket — changes from other sources (voice, automations) appear instantly
+- **Dark/light theme** toggle in the header, defaulting to dark, persisted to localStorage
 - **All Off** button always visible in the header
 - Your HA token is never sent to the browser — the add-on injects it server-side
 
@@ -73,7 +77,8 @@ Guest browser
     ▼
 Node.js proxy  (HA add-on container)
     │  — injects HA token on WebSocket auth handshake
-    │  — only forwards /api/states and /api/services/light/*
+    │  — only forwards /api/states, /api/services/light/*, /api/services/scene/turn_on
     ▼
 Home Assistant  (port 8123)
 ```
+
