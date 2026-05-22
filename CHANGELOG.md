@@ -4,7 +4,20 @@ All notable changes to Guest Lights are documented here.
 
 ---
 
-## [1.6.0] — 2025
+## [1.7.0] — 2026-05-22
+
+### Fixed
+- **WebSocket backoff broken** — `retryCount` was declared inside `connectWSLive`, resetting to 0 on every reconnect call. Moved to module scope (`_wsRetryCount`); resets to 0 on successful `auth_ok`. Exponential backoff and the 10-retry cap now work correctly.
+- **`ws.onerror` never set** — browser WebSocket errors were silently swallowed. Handler added; errors are now logged to the console.
+- **Color wheel hammering HA** — dragging the colour wheel fired a `setHsColor` API call on every pointer event. Debounced to 80 ms (matching the CT and brightness sliders); preview swatch still updates instantly.
+- **Per-bulb toggle stuck after first click** — the click handler closed over the `entity` variable captured at build time. After the first click, `state.entities[id]` is replaced with a new object via spread, but the closure kept reading the original stale reference — so every subsequent click sent the same on/off command. Fixed by reading `state.entities[entityId]` live inside the handler.
+
+### Added
+- **All Off undo toast** — tapping All Off now snapshots which lights were on, turns everything off, and shows a slide-up toast with an Undo button for 5 seconds. Tapping Undo restores previously-on lights.
+
+---
+
+## [1.6.0] — 2026-05-21
 
 ### Added
 - **Pinnable rooms** — tap the pin icon on any card to move it to a Pinned section at the top of the page; persists across reloads via localStorage.
@@ -21,21 +34,21 @@ All notable changes to Guest Lights are documented here.
 
 ---
 
-## [1.5.0]
+## [1.5.0] — 2026-05-20
 
 ### Added
 - Stdout usage logging on the proxy server — logs every API call and WebSocket `call_service` command with a timestamp and client IP.
 
 ---
 
-## [1.4.0]
+## [1.4.0] — 2026-05-20
 
 ### Added
 - Light theme alongside the existing dark theme; toggled via a button in the header; selection persisted to localStorage.
 
 ---
 
-## [1.3.0]
+## [1.3.0] — 2026-05-20
 
 ### Added
 - Dining Room scene card with preset scene buttons replacing per-bulb controls.
@@ -48,14 +61,14 @@ All notable changes to Guest Lights are documented here.
 
 ---
 
-## [1.2.0]
+## [1.2.0] — 2026-05-20
 
 ### Changed
 - Dining Room brightness and colour controls restored below scene buttons.
 
 ---
 
-## [1.1.0]
+## [1.1.0] — 2026-05-20
 
 ### Changed
 - Repository and add-on URLs corrected for public release.
@@ -64,7 +77,7 @@ All notable changes to Guest Lights are documented here.
 
 ---
 
-## [1.0.0]
+## [1.0.0] — 2026-05-19
 
 ### Added
 - Initial release.
@@ -75,3 +88,4 @@ All notable changes to Guest Lights are documented here.
 - All Off button in the header.
 - Node.js proxy server: HA token injected server-side, never sent to the browser; API whitelist limits exposure to light and state endpoints only.
 - Security hardening: CORS, request body limit, path traversal protection, WebSocket token validation.
+

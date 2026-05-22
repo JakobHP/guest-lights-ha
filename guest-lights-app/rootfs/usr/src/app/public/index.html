@@ -1111,7 +1111,7 @@ function buildBulbItem(entityId) {
   item.appendChild(bulbControls);
 
   toggle.addEventListener('click', () => {
-    const isOn = entity.state === 'on';
+    const isOn = state.entities[entityId]?.state === 'on';
     isOn ? setOff(entityId) : setOn(entityId);
     state.entities[entityId] = { ...state.entities[entityId], state: isOn ? 'off' : 'on' };
     updateBulbItemState(item, entityId);
