@@ -102,9 +102,9 @@
 
     #undo-toast {
       position: fixed;
-      bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+      top: calc(80px + env(safe-area-inset-top, 0px));
       left: 50%;
-      transform: translateX(-50%) translateY(80px);
+      transform: translateX(-50%) translateY(-80px);
       background: var(--surface3);
       border: 1px solid var(--border);
       color: var(--text);
@@ -722,6 +722,22 @@ function buildPinButton(roomName) {
   return btn;
 }
 
+// ─── Expanded rooms persistence ───────────────────────────────────────────────
+function getExpanded() {
+  try { return JSON.parse(localStorage.getItem('expandedRooms') || '[]'); }
+  catch { return []; }
+}
+function setExpanded(arr) {
+  localStorage.setItem('expandedRooms', JSON.stringify(arr));
+}
+function toggleExpanded(roomName) {
+  const expanded = getExpanded();
+  const idx = expanded.indexOf(roomName);
+  if (idx === -1) expanded.push(roomName);
+  else expanded.splice(idx, 1);
+  setExpanded(expanded);
+}
+
 // ─── UI: Room card builder ────────────────────────────────────────────────────
 function buildRoomCard(areaId, areaName, entityIds) {
   const card = document.createElement('div');
@@ -839,8 +855,11 @@ function buildRoomCard(areaId, areaName, entityIds) {
     updateRoomCardState(card, entityIds);
   });
 
+  if (getExpanded().includes(areaName)) card.classList.add('expanded');
+
   header.addEventListener('click', () => {
     card.classList.toggle('expanded');
+    toggleExpanded(areaName);
   });
 
   updateRoomCardState(card, entityIds);
@@ -956,7 +975,9 @@ function buildSceneCard(areaName, entityIds, scenes, noCT = false) {
 
   card.append(header, sceneButtons, controls, expandControls);
 
-  header.addEventListener('click', () => { if (hasExpandContent) card.classList.toggle('expanded'); });
+  if (getExpanded().includes(areaName)) card.classList.add('expanded');
+
+  header.addEventListener('click', () => { if (hasExpandContent) { card.classList.toggle('expanded'); toggleExpanded(areaName); } });
 
   // ── Toggle logic ──
   toggle.addEventListener('click', (e) => {
