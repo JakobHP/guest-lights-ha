@@ -4,6 +4,16 @@ All notable changes to Guest Lights are documented here.
 
 ---
 
+## [1.8.0] — 2026-05-22
+
+### Added
+- **Expand state persistence for pinned rooms** — expanded/collapsed state of pinned room cards is saved to localStorage and restored on reload. Non-pinned cards are unaffected. Unpinning a room clears its stored expand state.
+
+### Changed
+- **Undo toast repositioned to top** — the All Off undo toast now slides down from below the header, closer to the button that triggered it.
+
+---
+
 ## [1.7.0] — 2026-05-22
 
 ### Fixed
