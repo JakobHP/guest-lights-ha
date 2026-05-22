@@ -706,8 +706,15 @@ function setPinned(arr) {
 function togglePin(roomName) {
   const pinned = getPinned();
   const idx = pinned.indexOf(roomName);
-  if (idx === -1) pinned.push(roomName);
-  else pinned.splice(idx, 1);
+  if (idx === -1) {
+    pinned.push(roomName);
+  } else {
+    pinned.splice(idx, 1);
+    // discard stored expand state when unpinning
+    const expanded = getExpanded();
+    const ei = expanded.indexOf(roomName);
+    if (ei !== -1) { expanded.splice(ei, 1); setExpanded(expanded); }
+  }
   setPinned(pinned);
   buildUI();
 }
@@ -855,11 +862,11 @@ function buildRoomCard(areaId, areaName, entityIds) {
     updateRoomCardState(card, entityIds);
   });
 
-  if (getExpanded().includes(areaName)) card.classList.add('expanded');
+  if (getPinned().includes(areaName) && getExpanded().includes(areaName)) card.classList.add('expanded');
 
   header.addEventListener('click', () => {
     card.classList.toggle('expanded');
-    toggleExpanded(areaName);
+    if (getPinned().includes(areaName)) toggleExpanded(areaName);
   });
 
   updateRoomCardState(card, entityIds);
@@ -975,9 +982,9 @@ function buildSceneCard(areaName, entityIds, scenes, noCT = false) {
 
   card.append(header, sceneButtons, controls, expandControls);
 
-  if (getExpanded().includes(areaName)) card.classList.add('expanded');
+  if (getPinned().includes(areaName) && getExpanded().includes(areaName)) card.classList.add('expanded');
 
-  header.addEventListener('click', () => { if (hasExpandContent) { card.classList.toggle('expanded'); toggleExpanded(areaName); } });
+  header.addEventListener('click', () => { if (hasExpandContent) { card.classList.toggle('expanded'); if (getPinned().includes(areaName)) toggleExpanded(areaName); } });
 
   // ── Toggle logic ──
   toggle.addEventListener('click', (e) => {
