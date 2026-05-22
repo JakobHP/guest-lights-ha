@@ -100,6 +100,43 @@
     }
     #all-off-btn:hover { background: var(--surface3); color: var(--text); }
 
+    #undo-toast {
+      position: fixed;
+      bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--surface3);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 16px;
+      border-radius: 24px;
+      font-size: 14px;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+      opacity: 0;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      pointer-events: none;
+      z-index: 1000;
+    }
+    #undo-toast.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+      pointer-events: auto;
+    }
+    #undo-btn {
+      background: var(--accent);
+      border: none;
+      color: var(--bg);
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
     #loading {
       display: flex;
       flex-direction: column;
@@ -485,6 +522,10 @@
   Live updates unavailable — reload to retry.
 </div>
 
+<div id="undo-toast" aria-live="polite">
+  All lights off &nbsp;<button id="undo-btn">Undo</button>
+</div>
+
 <script>
 // ─── Theme ────────────────────────────────────────────────────────────────────
 (function () {
@@ -627,12 +668,14 @@ function setupColorWheel(canvas, preview, onPick) {
   };
 
   let dragging = false;
+  let pickDebounceT;
   const pick = (evt) => {
     evt.preventDefault();
     const [h, s] = getHS(evt);
     const [rr, gg, bb] = hslToRgb(h/360, s, 0.5);
     preview.style.background = `rgb(${rr},${gg},${bb})`;
-    onPick(h, s);
+    clearTimeout(pickDebounceT);
+    pickDebounceT = setTimeout(() => onPick(h, s), 80);
   };
 
   canvas.addEventListener('mousedown', (e) => { dragging = true; pick(e); });
@@ -1307,6 +1350,8 @@ async function init() {
   }
 }
 
+let _wsRetryCount = 0;
+
 function connectWSLive() {
   const ws = new WebSocket(`ws://${location.host}/api/websocket`);
   state.ws = ws;
@@ -1318,6 +1363,7 @@ function connectWSLive() {
         ws.send(JSON.stringify({ type: 'auth', access_token: '__PROXY_TOKEN__' }));
       }
       if (msg.type === 'auth_ok') {
+        _wsRetryCount = 0; // reset on successful connection
         ws.send(JSON.stringify({ id: 1, type: 'subscribe_events', event_type: 'state_changed' }));
       }
       if (msg.type === 'event' && msg.event?.event_type === 'state_changed') {
@@ -1332,17 +1378,20 @@ function connectWSLive() {
     }
   };
 
-  let retryCount = 0;
+  ws.onerror = (e) => {
+    console.error('WebSocket error:', e);
+  };
+
   ws.onclose = () => {
-    retryCount++;
-    const delay = Math.min(30000, 1000 * Math.pow(2, retryCount - 1));
-    if (retryCount > 10) {
+    _wsRetryCount++;
+    const delay = Math.min(30000, 1000 * Math.pow(2, _wsRetryCount - 1));
+    if (_wsRetryCount > 10) {
       console.error('WebSocket: max retries reached, live updates disabled');
       const el = document.getElementById('ws-error');
       if (el) el.style.display = '';
       return;
     }
-    console.warn(`WebSocket closed, reconnecting in ${delay}ms (attempt ${retryCount})`);
+    console.warn(`WebSocket closed, reconnecting in ${delay}ms (attempt ${_wsRetryCount})`);
     setTimeout(connectWSLive, delay);
   };
 }
@@ -1396,11 +1445,56 @@ function buildUI() {
 }
 
 // ─── All Off button ───────────────────────────────────────────────────────────
+let _undoTimer = null;
+let _undoSnapshot = null;
+
+function showUndoToast() {
+  const toast = document.getElementById('undo-toast');
+  toast.classList.add('visible');
+  clearTimeout(_undoTimer);
+  _undoTimer = setTimeout(dismissUndoToast, 5000);
+}
+
+function dismissUndoToast() {
+  const toast = document.getElementById('undo-toast');
+  toast.classList.remove('visible');
+  clearTimeout(_undoTimer);
+  _undoTimer = null;
+  _undoSnapshot = null;
+}
+
 document.getElementById('all-off-btn').addEventListener('click', () => {
   const allIds = FLOORS.flatMap(f => f.rooms.flatMap(r => r.entities.map(e => e.id)));
+
+  // Snapshot current states for undo
+  _undoSnapshot = {};
+  allIds.forEach(id => {
+    if (state.entities[id]) _undoSnapshot[id] = state.entities[id].state;
+  });
+
+  // Turn everything off
   allIds.forEach(id => setOff(id));
   allIds.forEach(id => {
     if (state.entities[id]) state.entities[id] = { ...state.entities[id], state: 'off' };
+  });
+  document.querySelectorAll('.room-card').forEach(card => {
+    if (card._entityIds) updateRoomCardState(card, card._entityIds);
+  });
+
+  showUndoToast();
+});
+
+document.getElementById('undo-btn').addEventListener('click', () => {
+  if (!_undoSnapshot) return;
+  const snapshot = _undoSnapshot;
+  dismissUndoToast();
+
+  // Restore previously-on lights
+  Object.entries(snapshot).forEach(([id, prevState]) => {
+    if (prevState === 'on') {
+      setOn(id);
+      if (state.entities[id]) state.entities[id] = { ...state.entities[id], state: 'on' };
+    }
   });
   document.querySelectorAll('.room-card').forEach(card => {
     if (card._entityIds) updateRoomCardState(card, card._entityIds);
